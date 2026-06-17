@@ -36,11 +36,33 @@ export default function App() {
       return;
     }
 
-    const userBookings = bookings.filter(
-      (b) =>
-        b.players.includes(user) &&
-        b.date === selectedDate
-    );
+    // ✅ conteggio ore attive (tutti i giorni futuri)
+const today = new Date();
+
+const activeBookings = bookings.filter((b) => {
+  const bookingDate = new Date(b.date);
+  return (
+    b.players.includes(user) &&
+    bookingDate >= today
+  );
+});
+
+if (activeBookings.length >= 2) {
+  alert("Puoi avere massimo 2 ore attive");
+  return;
+}
+
+// ✅ limite 1 prenotazione al giorno
+const userBookings = bookings.filter(
+  (b) =>
+    b.players.includes(user) &&
+    b.date === selectedDate
+);
+
+if (userBookings.length >= 1) {
+  alert("Puoi prenotare solo 1 ora al giorno");
+  return;
+}
 
     if (userBookings.length >= 1) {
       alert("Puoi prenotare solo 1 ora al giorno");
