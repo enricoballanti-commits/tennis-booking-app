@@ -7,6 +7,15 @@ export default function App() {
   const [bookings, setBookings] = useState([]);
   const [user, setUser] = useState("");
 
+  const today = new Date().toISOString().split("T")[0];
+
+  const [selectedDate, setSelectedDate] = useState(today);
+
+  // ✅ calcolo max 30 giorni
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + 15);
+  const maxDateStr = maxDate.toISOString().split("T")[0];
+
   // ✅ PRENOTAZIONE
   const bookSlot = (court, hour) => {
     if (!user) {
@@ -14,56 +23,74 @@ export default function App() {
       return;
     }
 
-    // ✅ controllo max 1 prenotazione
     const userBookings = bookings.filter(
-      (b) => b.players[0] === user
+      (b) =>
+        b.players[0] === user &&
+        b.date === selectedDate
     );
 
     if (userBookings.length >= 1) {
-      alert("Puoi prenotare solo 1 ora");
+      alert("Puoi prenotare solo 1 ora al giorno");
       return;
     }
 
     const alreadyBooked = bookings.find(
-      (b) => b.court === court && b.hour === hour
+      (b) =>
+        b.court === court &&
+        b.hour === hour &&
+        b.date === selectedDate
     );
 
     if (alreadyBooked) return;
 
     setBookings([
       ...bookings,
-      { court, hour, players: [user] }
+      { court, hour, players: [user], date: selectedDate }
     ]);
   };
 
   // ✅ CANCELLAZIONE
   const cancelBooking = (court, hour) => {
-    setBookings(bookings.filter(
-      (b) => !(b.court === court && b.hour === hour)
-    ));
+    setBookings(
+      bookings.filter(
+        (b) =>
+          !(
+            b.court === court &&
+            b.hour === hour &&
+            b.date === selectedDate
+          )
+      )
+    );
   };
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Prenotazione Campi Tennis</h1>
 
-      {/* INPUT NOME */}
-      <div style={{ marginBottom: 20 }}>
+      {/* ✅ INPUT NOME */}
+      <div style={{ marginBottom: 10 }}>
         <input
           placeholder="Inserisci il tuo nome"
           value={user}
           onChange={(e) => setUser(e.target.value)}
-          style={{
-            padding: 10,
-            width: "100%",
-            fontSize: 16
-          }}
+          style={{ padding: 10, width: "100%" }}
+        />
+      </div>
+
+      {/* ✅ SELETTORE DATA */}
+      <div style={{ marginBottom: 20 }}>
+        <input
+          type="date"
+          value={selectedDate}
+          min={today}
+          max={maxDateStr}
+          onChange={(e) => setSelectedDate(e.target.value)}
         />
       </div>
 
       {courts.map((court) => (
         <div key={court} style={{ marginBottom: 30 }}>
-          <h2>{court}</h2>
+          <h2>{court} — {selectedDate}</h2>
 
           <div
             style={{
@@ -74,7 +101,10 @@ export default function App() {
           >
             {hours.map((hour) => {
               const booking = bookings.find(
-                (b) => b.court === court && b.hour === hour
+                (b) =>
+                  b.court === court &&
+                  b.hour === hour &&
+                  b.date === selectedDate
               );
 
               return (
@@ -82,7 +112,6 @@ export default function App() {
                   key={hour}
                   onClick={() => {
                     if (booking) {
-                      // ✅ cancella SOLO se sei tu
                       if (booking.players[0] === user) {
                         cancelBooking(court, hour);
                       } else {
