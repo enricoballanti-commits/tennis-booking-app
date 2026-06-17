@@ -7,9 +7,20 @@ export default function App() {
   const [bookings, setBookings] = useState([]);
   const [user, setUser] = useState("");
 
+  // ✅ PRENOTAZIONE
   const bookSlot = (court, hour) => {
     if (!user) {
       alert("Inserisci il tuo nome");
+      return;
+    }
+
+    // ✅ controllo max 1 prenotazione
+    const userBookings = bookings.filter(
+      (b) => b.players[0] === user
+    );
+
+    if (userBookings.length >= 1) {
+      alert("Puoi prenotare solo 1 ora");
       return;
     }
 
@@ -23,6 +34,13 @@ export default function App() {
       ...bookings,
       { court, hour, players: [user] }
     ]);
+  };
+
+  // ✅ CANCELLAZIONE
+  const cancelBooking = (court, hour) => {
+    setBookings(bookings.filter(
+      (b) => !(b.court === court && b.hour === hour)
+    ));
   };
 
   return (
@@ -62,7 +80,18 @@ export default function App() {
               return (
                 <button
                   key={hour}
-                  onClick={() => bookSlot(court, hour)}
+                  onClick={() => {
+                    if (booking) {
+                      // ✅ cancella SOLO se sei tu
+                      if (booking.players[0] === user) {
+                        cancelBooking(court, hour);
+                      } else {
+                        alert("Non puoi cancellare la prenotazione di altri");
+                      }
+                    } else {
+                      bookSlot(court, hour);
+                    }
+                  }}
                   style={{
                     height: 60,
                     backgroundColor: booking ? "#ccc" : "#4CAF50",
