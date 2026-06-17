@@ -103,3 +103,69 @@ export default function App() {
       </div>
 
       {/* SELEZIONE DATA */}
+      <div style={{ marginBottom: 20 }}>
+        <input
+          type="date"
+          value={selectedDate}
+          min={today}
+          max={maxDateStr}
+          onChange={(e) => setSelectedDate(e.target.value)}
+        />
+      </div>
+
+      {courts.map((court) => (
+        <div key={court} style={{ marginBottom: 30 }}>
+          <h2>{court} — {selectedDate}</h2>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: 10
+            }}
+          >
+            {hours.map((hour) => {
+              const booking = bookings.find(
+                (b) =>
+                  b.court === court &&
+                  b.hour === hour &&
+                  b.date === selectedDate
+              );
+
+              return (
+                <button
+                  key={hour}
+                  onClick={() => {
+                    if (booking) {
+                      if (booking.players.includes(user)) {
+                        cancelBooking(court, hour);
+                      } else {
+                        alert("Non puoi cancellare la prenotazione di altri");
+                      }
+                    } else {
+                      bookSlot(court, hour);
+                    }
+                  }}
+                  style={{
+                    height: 60,
+                    backgroundColor: booking ? "#ccc" : "#4CAF50",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 8
+                  }}
+                >
+                  {hour}:00
+                  {booking && (
+                    <div style={{ fontSize: 12 }}>
+                      {booking.players.join(", ")}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
