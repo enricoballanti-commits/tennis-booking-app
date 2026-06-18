@@ -3,8 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 
 // 🔴 METTI I TUOI DATI
 const supabase = createClient(
-  "YOUR_SUPABASE_URL",
-  "YOUR_SUPABASE_ANON_KEY"
+  "https://dfxcscxkwabshseoxjte.supabase.co",
+  "sb_publishable_V89vpZmV3Ao4H_uEcrYMcQ_Q-zyG8zA"
 );
 
 const hours = Array.from({ length: 17 }, (_, i) => i + 7);
