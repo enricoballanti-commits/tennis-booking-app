@@ -397,35 +397,46 @@ if (view === "dashboard") {
               );
 
               return (
-                <button
-                  key={hour}
-                  onClick={() =>
-                    booking
-                      ? cancelBooking(court, hour)
-                      : bookSlot(court, hour)
-                  }
-                  style={{
-                    height: 80,
-                    backgroundColor: getColor(booking),
-                    color: "white",
-                    fontSize: 10
-                  }}
-                >
-                  <div>{hour}:00</div>
+<button
+  key={hour}
+  onClick={() =>
+    booking
+      ? cancelBooking(court, hour)
+      : bookSlot(court, hour)
+  }
+  style={{
+    height: 110,                // ✅ più grande
+    borderRadius: 12,
+    backgroundColor: getColor(booking),
+    color: "white",
+    padding: 6,
+    fontSize: 11,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center"
+  }}
+>
+  {/* ORA */}
+  <div style={{ fontSize: 14, fontWeight: "bold" }}>
+    {hour}:00
+  </div>
 
-                  {booking &&
-                    booking.players.map((p, i) => {
-                      const u = usersList.find(
-                        x => x.username === p
-                      );
+  {/* GIOCATORI */}
+  {booking && (
+    <div style={{ fontSize: 11, marginTop: 4 }}>
+      {booking.players.map((p, i) => {
+        const u = usersList.find(x => x.username === p);
 
-                      return (
-                        <div key={i}>
-                          {u ? u.name : p}
-                        </div>
-                      );
-                    })}
-                </button>
+        return (
+          <div key={i}>
+            {u ? `${u.name} ${u.surname}` : p}
+          </div>
+        );
+      })}
+    </div>
+  )}
+</button>
               );
             })}
           </div>
