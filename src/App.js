@@ -115,82 +115,80 @@ const getWeekDates = () => {
   };
 
   // PRENOTA ✅ (con blocco 2 ore mantenuto)
-  const bookSlot = async (court, hour) => {
-    let players = [...selectedPlayers];
-  
-    const isMaestro = loggedUser.toLowerCase() === "maestro";
-  
-    // ✅ comportamento normale
-    if (!isMaestro) {
-      if (!players.includes(loggedUser)) {
-        players = [loggedUser, ...players];
-      }
-  
-      if (players.length !== 2 && players.length !== 4) {
-        alert("Devi selezionare 2 o 4 giocatori");
+const bookSlot = async (court, hour) => {
+  let players = [...selectedPlayers];
+
+  const isMaestro = loggedUser.toLowerCase() === "maestro";
+
+  // ✅ se NON è maestro → comportamento normale
+  if (!isMaestro) {
+    if (!players.includes(loggedUser)) {
+      players = [loggedUser, ...players];
+    }
+
+    const totalPlayers = players.length;
+
+    if (totalPlayers !== 2 && totalPlayers !== 4) {
+      alert(
+        `Hai selezionato ${totalPlayers} giocatori (incluso te). Servono 2 o 4.`
+      );
+      return;
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+
+    for (let p of players) {
+      const activeBookings = bookings.filter(
+        (b) =>
+          b.players.includes(p) &&
+          b.date >= today
+      );
+
+      if (
+        p.toLowerCase() !== "maestro" &&
+        activeBookings.length >= 2
+      ) {
+        alert(`${p} ha già 2 ore prenotate`);
         return;
       }
-  
-      const today = new Date().toISOString().split("T")[0];
-  
-      for (let p of players) {
-        const active = bookings.filter(
-          b => b.players.includes(p) && b.date >= today
-        );
-  
-        if (active.length >= 2) {
-          alert(`${p} ha già 2 ore prenotate`);
-          return;
-        }
-      }
     }
-  
-    // ✅ slot già occupato
-    const exists = bookings.find(
-      b =>
-        b.court === court &&
-        b.hour === hour &&
-        b.date === selectedDate
-    );
-  
-    if (exists) return;
-  
-    // ✅ MAESTRO → forza valore
-    if (isMaestro) {
-      players = ["maestro"];
-    }
-  
-    await supabase.from("bookings").insert([
-      {
-        court,
-        hour,
-        date: selectedDate,
-        players: players.join(","),
-        created_by: loggedUser
-      }
-    ]);
-  
-    setSelectedPlayers([]);
-    loadBookings();
-  };
-  ``
+  }
 
+  // ✅ SLOT GIÀ OCCUPATO
+  const exists = bookings.find(
+    (b) =>
+      b.court === court &&
+      b.hour === hour &&
+      b.date === selectedDate
+  );
+
+  if (exists) return;
+
+  // ✅ SE MAESTRO → forzo valore
+  if (isMaestro) {
+    players = ["maestro"];
+  }
+
+  await supabase.from("bookings").insert([
+    {
+      court,
+      hour,
+      date: selectedDate,
+      players: players.join(","),
+      created_by: loggedUser
+    }
+  ]);
+
+  setSelectedPlayers([]);
+  loadBookings();
+};
 
   const getColor = booking => {
     if (!booking) return "#4CAF50";
-  
-    // ✅ MAESTRO SEMPRE ARANCIONE
-    if (booking.players.includes("maestro")) {
-      return "#FFA500";
-    }
-  
-    if (booking.players.some(p => p.includes("esterno"))) {
-      return "#FFA500";
-    }
-  
+    if (booking.players.some(p => p.includes("esterno"))) return "#FFA500";
+    if (booking.players.some(p => p === "maestro")) return "#ff4d4d";
     return "#007BFF";
   };
-  
 
   // LOGIN UI
   if (!loggedUser) {
@@ -408,12 +406,7 @@ if (view === "dashboard") {
           fontSize: 12
         }}
       >
-        {p.toLowerCase() === "maestro"
-  ? "Maestro"
-  : u
-    ? `${u.name} ${u.surname}`
-    : p}
-
+        {u ? `${u.name} ${u.surname}` : p}
 
         <span
           onClick={() =>
