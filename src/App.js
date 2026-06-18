@@ -116,15 +116,23 @@ const getWeekDates = () => {
 
   // PRENOTA ✅ (con blocco 2 ore mantenuto)
   const bookSlot = async (court, hour) => {
-    let players = [...selectedPlayers];
+    // ✅ includo sempre l'utente loggato
+let players = [...selectedPlayers];
 
-    if (!players.includes(loggedUser)) {
-      players.unshift(loggedUser);
-    }
+if (!players.includes(loggedUser)) {
+  players = [loggedUser, ...players];
+}
 
-    if (players.length !== 2 && players.length !== 4) {
-      return alert("Seleziona 2 o 4 giocatori");
-    }
+// ✅ conteggio CORRETTO sempre aggiornato
+const totalPlayers = players.length;
+
+if (totalPlayers !== 2 && totalPlayers !== 4) {
+  alert(
+    `Hai selezionato ${totalPlayers} giocatori (incluso te). Servono 2 o 4.`
+  );
+  return;
+}
+
 
     const today = new Date().toISOString().split("T")[0];
 
