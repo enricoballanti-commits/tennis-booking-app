@@ -22,27 +22,52 @@ export default function App() {
   );
 
   // ✅ LOGIN CASE-INSENSITIVE
-  const handleLogin = async () => {
-    const { data, error } = await supabase
+const handleLogin = async () => {
+  const { data, error } = await supabase
+    .from("users")
+    .select("*");
+
+  console.log("DATA:", data);
+  console.log("ERROR:", error);
+
+  if (error || !data) {
+    alert("Errore database");
+    return;
+  }
+
+  const found = data.find(
+    (u) =>
+      u.username &&
+      u.username.toLowerCase() === user.trim().toLowerCase()
+  );
+
+  if (!found) {
+    alert("Utente non valido");
+    return;
+  }
+
+  if (!found.pin) {
+    if (!pin) {
+      alert("Inserisci PIN");
+      return;
+    }
+
+    await supabase
       .from("users")
-      .select("*");
+      .update({ pin })
+      .eq("id", found.id);
 
-    if (error || !data) {
-      alert("Errore database");
-      return;
-    }
+    setLoggedUser(found.username);
+    return;
+  }
 
-    const found = data.find(
-      (u) =>
-        u.username &&
-        u.username.toLowerCase() === user.trim().toLowerCase()
-    );
+  if (found.pin !== pin) {
+    alert("PIN errato");
+    return;
+  }
 
-    if (!found) {
-      alert("Utente non valido");
-      return;
-    }
-
+  setLoggedUser(found.username);
+};
     // ✅ Primo accesso → crea PIN
     if (!found.pin) {
       if (!pin) {
