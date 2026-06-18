@@ -8,8 +8,8 @@ export default function App() {
   const [user, setUser] = useState("");
   const [playersInput, setPlayersInput] = useState("");
 
-  const today = new Date().toISOString().split("T")[0];
-  const [selectedDate, setSelectedDate] = useState(today);
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [selectedDate, setSelectedDate] = useState(todayStr);
 
   const maxDate = new Date();
   maxDate.setDate(maxDate.getDate() + 15);
@@ -22,53 +22,58 @@ export default function App() {
       return;
     }
 
-    const players = playersInput
+    let players = playersInput
       .split(",")
       .map((p) => p.trim())
       .filter((p) => p !== "");
 
+    // include sempre chi prenota
     if (!players.includes(user)) {
       players.unshift(user);
     }
 
-    if (players.length < 2 || players.length > 4) {
-      alert("Devi inserire da 2 a 4 giocatori");
+    // ✅ controllo numero giocatori (2 o 4)
+    if (players.length !== 2 && players.length !== 4) {
+      alert("Devi inserire 2 o 4 giocatori");
       return;
     }
 
-    // ✅ conteggio ore attive (tutti i giorni futuri)
-const today = new Date();
+    const today = new Date();
 
-const activeBookings = bookings.filter((b) => {
-  const bookingDate = new Date(b.date);
-  return (
-    b.players.includes(user) &&
-    bookingDate >= today
-  );
-});
+    // ✅ controllo 2 ore attive per TUTTI
+    for (let p of players) {
+      const activeBookings = bookings.filter((b) => {
+        const bookingDate = new Date(b.date);
+        return (
+          b.players.includes(p) &&
+          bookingDate >= today
+        );
+      });
 
-if (activeBookings.length >= 2) {
-  alert("Puoi avere massimo 2 ore attive");
-  return;
-}
-
-// ✅ limite 1 prenotazione al giorno
-const userBookings = bookings.filter(
-  (b) =>
-    b.players.includes(user) &&
-    b.date === selectedDate
-);
-
-if (userBookings.length >= 1) {
-  alert("Puoi prenotare solo 1 ora al giorno");
-  return;
-}
-
-    if (userBookings.length >= 1) {
-      alert("Puoi prenotare solo 1 ora al giorno");
-      return;
+      if (
+        p.toLowerCase() !== "maestro" &&
+        activeBookings.length >= 2
+      ) {
+        alert(`${p} ha già 2 ore attive`);
+        return;
+      }
     }
 
+    // ✅ 1 sola prenotazione al giorno per ospitante (se non maestro)
+    if (user.toLowerCase() !== "maestro") {
+      const userBookings = bookings.filter(
+        (b) =>
+          b.players.includes(user) &&
+          b.date === selectedDate
+      );
+
+      if (userBookings.length >= 1) {
+        alert("Hai già una prenotazione in questo giorno");
+        return;
+      }
+    }
+
+    // ✅ verifica slot occupato
     const alreadyBooked = bookings.find(
       (b) =>
         b.court === court &&
@@ -78,6 +83,7 @@ if (userBookings.length >= 1) {
 
     if (alreadyBooked) return;
 
+    // ✅ salva
     setBookings([
       ...bookings,
       { court, hour, players, date: selectedDate }
@@ -117,19 +123,19 @@ if (userBookings.length >= 1) {
       {/* INPUT GIOCATORI */}
       <div style={{ marginBottom: 10 }}>
         <input
-          placeholder="Giocatori (es: Mario, Luca)"
+          placeholder="Giocatori (es: Mario, Luca oppure Mario, Luca, Anna, Paolo)"
           value={playersInput}
           onChange={(e) => setPlayersInput(e.target.value)}
           style={{ padding: 10, width: "100%" }}
         />
       </div>
 
-      {/* SELEZIONE DATA */}
+      {/* SELETTORE DATA */}
       <div style={{ marginBottom: 20 }}>
         <input
           type="date"
           value={selectedDate}
-          min={today}
+          min={todayStr}
           max={maxDateStr}
           onChange={(e) => setSelectedDate(e.target.value)}
         />
@@ -159,10 +165,13 @@ if (userBookings.length >= 1) {
                   key={hour}
                   onClick={() => {
                     if (booking) {
-                      if (booking.players.includes(user)) {
+                      if (
+                        booking.players.includes(user) ||
+                        user.toLowerCase() === "maestro"
+                      ) {
                         cancelBooking(court, hour);
                       } else {
-                        alert("Non puoi cancellare la prenotazione di altri");
+                        alert("Non puoi cancellare questa prenotazione");
                       }
                     } else {
                       bookSlot(court, hour);
@@ -170,7 +179,13 @@ if (userBookings.length >= 1) {
                   }}
                   style={{
                     height: 60,
-                    backgroundColor: booking ? "#ccc" : "#4CAF50",
+                    backgroundColor: booking
+                      ? booking.players.some(p =>
+                          p.toLowerCase().includes("esterno")
+                        )
+                        ? "#FFA500" // esterno arancione
+                        : "#ccc"
+                      : "#4CAF50",
                     color: "white",
                     border: "none",
                     borderRadius: 8
