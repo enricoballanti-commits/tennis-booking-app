@@ -68,8 +68,7 @@ export default function App() {
     const { data } = await supabase.from("users").select("*");
 
     const found = data?.find(
-      u =>
-        u.username?.toLowerCase() === user.trim().toLowerCase()
+      u => u.username?.toLowerCase() === user.trim().toLowerCase()
     );
 
     if (!found) return alert("Utente non valido");
@@ -89,7 +88,7 @@ export default function App() {
     setLoggedUser(found.username);
   };
 
-  // BOOK
+  // PRENOTA
   const bookSlot = async (court, hour) => {
     let players = [...selectedPlayers];
 
@@ -115,7 +114,7 @@ export default function App() {
     loadBookings();
   };
 
-  // CANCEL
+  // CANCELLA
   const cancelBooking = async (court, hour) => {
     await supabase
       .from("bookings")
@@ -134,7 +133,7 @@ export default function App() {
     return "#007BFF";
   };
 
-  // ✅ LOGIN UI MIGLIORATA
+  // LOGIN UI
   if (!loggedUser) {
     return (
       <div style={{ padding: 30, maxWidth: 400, margin: "auto" }}>
@@ -146,12 +145,7 @@ export default function App() {
           placeholder="Username"
           value={user}
           onChange={e => setUser(e.target.value)}
-          style={{
-            width: "100%",
-            padding: 15,
-            fontSize: 16,
-            marginBottom: 15
-          }}
+          style={{ width: "100%", padding: 15, marginBottom: 15 }}
         />
 
         <input
@@ -159,11 +153,7 @@ export default function App() {
           placeholder="PIN"
           value={pin}
           onChange={e => setPin(e.target.value)}
-          style={{
-            width: "100%",
-            padding: 15,
-            fontSize: 16
-          }}
+          style={{ width: "100%", padding: 15 }}
         />
 
         <button
@@ -197,7 +187,7 @@ export default function App() {
 
         {courts.map(court => (
           <div key={court}>
-            <h3>{court}</h3>
+            <h3 style={{ textAlign: "center" }}>{court}</h3>
 
             {hours.map(hour => {
               const b = bookings.find(
@@ -219,7 +209,7 @@ export default function App() {
     );
   }
 
-  // ✅ APP UI
+  // APP
   return (
     <div style={{ padding: 15, maxWidth: 500, margin: "auto" }}>
       <h1 style={{ textAlign: "center", fontSize: 28 }}>
@@ -242,9 +232,9 @@ export default function App() {
         onClick={() => setView("dashboard")}
         style={{
           width: "100%",
-          padding: 14,
+          padding: 15,
           fontSize: 16,
-          background: "#28a745",
+          background: "#007BFF", // ✅ blu
           color: "white",
           borderRadius: 10,
           border: "none",
@@ -254,6 +244,7 @@ export default function App() {
         Vai al Tabellone
       </button>
 
+      {/* DATA */}
       <input
         type="date"
         value={selectedDate}
@@ -266,10 +257,67 @@ export default function App() {
         }}
       />
 
+      {/* ✅ GIOCATORI SOTTO DATA */}
+      <input
+        placeholder="Cerca giocatori..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{ width: "100%", padding: 12 }}
+      />
+
+      {filteredUsers.map(u => (
+        <div
+          key={u.id}
+          onClick={() => {
+            if (!selectedPlayers.includes(u.username)) {
+              setSelectedPlayers([...selectedPlayers, u.username]);
+            }
+            setSearch("");
+          }}
+          style={{
+            padding: 10,
+            borderBottom: "1px solid #ddd"
+          }}
+        >
+          {u.name} {u.surname}
+        </div>
+      ))}
+
+      <div style={{ marginTop: 10 }}>
+        {selectedPlayers.map(p => (
+          <span
+            key={p}
+            style={{
+              background: "#007BFF",
+              color: "white",
+              padding: "6px 12px",
+              borderRadius: 20,
+              margin: 4,
+              display: "inline-block"
+            }}
+          >
+            {p}
+          </span>
+        ))}
+      </div>
+
+      <button
+        onClick={() => setSelectedPlayers([...selectedPlayers, "esterno"])}
+        style={{ marginTop: 10 }}
+      >
+        + Esterno
+      </button>
+
       {/* SLOT */}
       {courts.map(court => (
-        <div key={court}>
-          <h3>{court}</h3>
+        <div key={court} style={{ marginTop: 20 }}>
+          <h3 style={{
+            textAlign: "center",
+            padding: 5,
+            borderBottom: "1px solid #ddd"
+          }}>
+            {court}
+          </h3>
 
           <div
             style={{
@@ -298,8 +346,7 @@ export default function App() {
                     height: 80,
                     borderRadius: 10,
                     backgroundColor: getColor(booking),
-                    color: "white",
-                    fontSize: 14
+                    color: "white"
                   }}
                 >
                   {hour}:00
