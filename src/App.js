@@ -22,36 +22,34 @@ export default function App() {
   const [filteredUsers, setFilteredUsers] = useState([]);
 
   const [view, setView] = useState("booking");
-
   const [weekOffset, setWeekOffset] = useState(0);
 
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
 
-  // ✅ WEEK helper
-const getWeekDates = () => {
-  const today = new Date();
-  const day = today.getDay();
+  // ✅ WEEK
+  const getWeekDates = () => {
+    const today = new Date();
+    const day = today.getDay();
 
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - ((day + 6) % 7) + weekOffset * 7);
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((day + 6) % 7) + weekOffset * 7);
 
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    return {
-      date: d.toISOString().split("T")[0],
-      label: d.toLocaleDateString("it-IT", {
-        weekday: "short",
-        day: "numeric"
-      })
-    };
-  });
-};
-``
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      return {
+        date: d.toISOString().split("T")[0],
+        label: d.toLocaleDateString("it-IT", {
+          weekday: "short",
+          day: "numeric"
+        })
+      };
+    });
+  };
 
-  const weekDates = getWeekDates()
+  const weekDates = getWeekDates();
 
   // LOAD
   const loadBookings = async () => {
@@ -114,79 +112,78 @@ const getWeekDates = () => {
     setLoggedUser(found.username);
   };
 
-  // PRENOTA ✅ (con blocco 2 ore mantenuto)
-const bookSlot = async (court, hour) => {
-  let players = [...selectedPlayers];
+  // ✅ PRENOTA
+  const bookSlot = async (court, hour) => {
+    let players = [...selectedPlayers];
+    const isMaestro = loggedUser.toLowerCase() === "maestro";
 
-  const isMaestro = loggedUser.toLowerCase() === "maestro";
+    if (!isMaestro) {
+      if (!players.includes(loggedUser)) {
+        players = [loggedUser, ...players];
+      }
 
-  // ✅ se NON è maestro → comportamento normale
-  if (!isMaestro) {
-    if (!players.includes(loggedUser)) {
-      players = [loggedUser, ...players];
-    }
+      if (players.length !== 2 && players.length !== 4) {
+        return alert("Servono 2 o 4 giocatori");
+      }
 
-    const totalPlayers = players.length;
+      const today = new Date().toISOString().split("T")[0];
 
-    if (totalPlayers !== 2 && totalPlayers !== 4) {
-      alert(
-        `Hai selezionato ${totalPlayers} giocatori (incluso te). Servono 2 o 4.`
-      );
-      return;
-    }
+      for (let p of players) {
+        const active = bookings.filter(
+          b => b.players.includes(p) && b.date >= today
+        );
 
-    const today = new Date().toISOString().split("T")[0];
-
-    for (let p of players) {
-      const activeBookings = bookings.filter(
-        (b) =>
-          b.players.includes(p) &&
-          b.date >= today
-      );
-
-      if (
-        p.toLowerCase() !== "maestro" &&
-        activeBookings.length >= 2
-      ) {
-        alert(`${p} ha già 2 ore prenotate`);
-        return;
+        if (p.toLowerCase() !== "maestro" && active.length >= 2) {
+          alert(`${p} ha già 2 ore prenotate`);
+          return;
+        }
       }
     }
-  }
 
-  // ✅ SLOT GIÀ OCCUPATO
-  const exists = bookings.find(
-    (b) =>
-      b.court === court &&
-      b.hour === hour &&
-      b.date === selectedDate
-  );
+    const exists = bookings.find(
+      b =>
+        b.court === court &&
+        b.hour === hour &&
+        b.date === selectedDate
+    );
 
-  if (exists) return;
+    if (exists) return;
 
-  // ✅ SE MAESTRO → forzo valore
-  if (isMaestro) {
-    players = ["maestro"];
-  }
-
-  await supabase.from("bookings").insert([
-    {
-      court,
-      hour,
-      date: selectedDate,
-      players: players.join(","),
-      created_by: loggedUser
+    if (isMaestro) {
+      players = ["maestro"];
     }
-  ]);
 
-  setSelectedPlayers([]);
-  loadBookings();
-};
+    await supabase.from("bookings").insert([
+      {
+        court,
+        hour,
+        date: selectedDate,
+        players: players.join(","),
+        created_by: loggedUser
+      }
+    ]);
 
+    setSelectedPlayers([]);
+    loadBookings();
+  };
+
+  // ✅ CANCELLA
+  const cancelBooking = async (court, hour) => {
+    await supabase
+      .from("bookings")
+      .delete()
+      .eq("court", court)
+      .eq("hour", hour)
+      .eq("date", selectedDate);
+
+    loadBookings();
+  };
+
+  // ✅ COLORI
   const getColor = booking => {
     if (!booking) return "#4CAF50";
+    if (booking.players.includes("maestro")) return "#FFA500"; // ✅ ARANCIONE
     if (booking.players.some(p => p.includes("esterno"))) return "#FFA500";
-    if (booking.players.some(p => p === "maestro")) return "#ff4d4d";
     return "#007BFF";
   };
 
@@ -194,9 +191,7 @@ const bookSlot = async (court, hour) => {
   if (!loggedUser) {
     return (
       <div style={{ padding: 30, maxWidth: 400, margin: "auto" }}>
-        <h1 style={{ textAlign: "center", fontSize: 28 }}>
-          🎾 Login
-        </h1>
+        <h1 style={{ textAlign: "center" }}>🎾 Login</h1>
 
         <input
           placeholder="Username"
@@ -216,14 +211,10 @@ const bookSlot = async (court, hour) => {
         <button
           onClick={handleLogin}
           style={{
-            marginTop: 20,
             width: "100%",
             padding: 15,
-            fontSize: 18,
             background: "#007BFF",
-            color: "white",
-            borderRadius: 10,
-            border: "none"
+            color: "white"
           }}
         >
           Entra
@@ -232,109 +223,78 @@ const bookSlot = async (court, hour) => {
     );
   }
 
-  // ✅ DASHBOARD SETTIMANALE
-if (view === "dashboard") {
-  return (
-    <div style={{ padding: 10 }}>
-      <button onClick={() => setView("booking")}>
-        ← Torna
-      </button>
-
-      <h2 style={{ textAlign: "center" }}>📅 Tabellone</h2>
-
-      {/* ✅ NAVIGAZIONE SETTIMANA */}
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        marginBottom: 10
-      }}>
-        <button onClick={() => setWeekOffset(weekOffset - 1)}>
-          ← Settimana prec.
+  // ✅ DASHBOARD
+  if (view === "dashboard") {
+    return (
+      <div style={{ padding: 10 }}>
+        <button onClick={() => setView("booking")}>
+          ← Torna
         </button>
 
-        <button onClick={() => setWeekOffset(weekOffset + 1)}>
-          Settimana succ. →
-        </button>
-      </div>
+        <h2 style={{ textAlign: "center" }}>📅 Tabellone</h2>
 
-      {courts.map(court => (
-        <div key={court} style={{ marginBottom: 20 }}>
-          <h3 style={{ textAlign: "center" }}>{court}</h3>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "60px repeat(7,1fr)",
-              gap: 4
-            }}
-          >
-            <div></div>
-
-            {/* ✅ intestazione giorni */}
-            {weekDates.map(d => (
-              <div key={d.date} style={{ fontSize: 10 }}>
-                {d.label}
-              </div>
-            ))}
-
-            {/* ✅ righe ore */}
-            {hours.map(hour => (
-              <React.Fragment key={hour}>
-                <div>{hour}:00</div>
-
-                {weekDates.map(d => {
-                  const booking = bookings.find(
-                    b =>
-                      b.court === court &&
-                      b.hour === hour &&
-                      b.date === d.date
-                  );
-
-                  return (
-                    <div
-                      key={d.date + hour}
-                      style={{
-                        height: 35,
-                        background: getColor(booking),
-                        fontSize: 9,
-                        color: "white",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center"
-                      }}
-                    >
-                      {booking ? "✔" : ""}
-                    </div>
-                  );
-                })}
-              </React.Fragment>
-            ))}
-          </div>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <button onClick={() => setWeekOffset(weekOffset - 1)}>
+            ← prec
+          </button>
+          <button onClick={() => setWeekOffset(weekOffset + 1)}>
+            succ →
+          </button>
         </div>
-      ))}
-    </div>
-  );
-}
 
+        {courts.map(court => (
+          <div key={court}>
+            <h3 style={{ textAlign: "center" }}>{court}</h3>
 
-  // APP
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "60px repeat(7,1fr)"
+            }}>
+              <div></div>
+
+              {weekDates.map(d => (
+                <div key={d.date}>{d.label}</div>
+              ))}
+
+              {hours.map(hour => (
+                <React.Fragment key={hour}>
+                  <div>{hour}:00</div>
+
+                  {weekDates.map(d => {
+                    const b = bookings.find(
+                      x =>
+                        x.court === court &&
+                        x.hour === hour &&
+                        x.date === d.date
+                    );
+
+                    return (
+                      <div
+                        key={d.date + hour}
+                        style={{
+                          height: 30,
+                          background: getColor(b)
+                        }}
+                      >
+                        {b ? "✔" : ""}
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // ✅ APP
   return (
     <div style={{ padding: 15, maxWidth: 500, margin: "auto" }}>
-      <h1 style={{ textAlign: "center", fontSize: 28 }}>
-        🎾 Prenotazioni
-      </h1>
+      <h1 style={{ textAlign: "center" }}>🎾 Prenotazioni</h1>
 
-      <div
-        style={{
-          textAlign: "center",
-          marginBottom: 10,
-          padding: 10,
-          background: "#f5f5f5",
-          borderRadius: 10
-        }}
-      >
-        👤 {loggedUser}
-      </div>
+      <div style={{ textAlign: "center" }}>👤 {loggedUser}</div>
 
       <button
         onClick={() => setView("dashboard")}
@@ -342,114 +302,63 @@ if (view === "dashboard") {
           width: "100%",
           padding: 15,
           background: "#007BFF",
-          color: "white",
-          borderRadius: 10
+          color: "white"
         }}
       >
         Vai al Tabellone
       </button>
 
+      {/* DATA */}
       <input
         type="date"
         value={selectedDate}
         onChange={e => setSelectedDate(e.target.value)}
-        style={{
-          width: "100%",
-          padding: 14,
-          marginTop: 10
-        }}
+        style={{ width: "100%", padding: 10 }}
       />
 
-{/* GIOCATORI */}
-<input
-  placeholder="Cerca giocatori..."
-  value={search}
-  onChange={e => setSearch(e.target.value)}
-  style={{ width: "100%", padding: 12 }}
-/>
+      {/* GIOCATORI */}
+      <input
+        placeholder="Cerca giocatori..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        style={{ width: "100%", padding: 10 }}
+      />
 
-{/* LISTA RISULTATI */}
-{filteredUsers.map(u => (
-  <div
-    key={u.id}
-    onClick={() => {
-      if (!selectedPlayers.includes(u.username)) {
-        setSelectedPlayers([...selectedPlayers, u.username]);
-      }
-      setSearch("");
-    }}
-    style={{
-      padding: 10,
-      borderBottom: "1px solid #ddd"
-    }}
-  >
-    {u.name} {u.surname}
-  </div>
-))}
-
-{/* ✅ QUI METTI I BADGE */}
-<div style={{ marginTop: 10 }}>
-  {selectedPlayers.map((p) => {
-    const u = usersList.find(x => x.username === p);
-
-    return (
-      <span
-        key={p}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          background: "#007BFF",
-          color: "white",
-          padding: "6px 12px",
-          borderRadius: 20,
-          margin: 4,
-          fontSize: 12
-        }}
-      >
-        {u ? `${u.name} ${u.surname}` : p}
-
-        <span
-          onClick={() =>
-            setSelectedPlayers(
-              selectedPlayers.filter(x => x !== p)
-            )
-          }
-          style={{
-            marginLeft: 8,
-            cursor: "pointer",
-            fontWeight: "bold"
+      {filteredUsers.map(u => (
+        <div
+          key={u.id}
+          onClick={() => {
+            if (!selectedPlayers.includes(u.username)) {
+              setSelectedPlayers([...selectedPlayers, u.username]);
+            }
+            setSearch("");
           }}
         >
-          ✕
-        </span>
-      </span>
-    );
-  })}
-</div>
+          {u.name} {u.surname}
+        </div>
+      ))}
 
-{/* ESTERNO */}
-<button
-  onClick={() =>
-    setSelectedPlayers([...selectedPlayers, "esterno"])
-  }
-  style={{ marginTop: 10 }}
->
-  + Esterno
-</button>
+      {/* BADGE */}
+      <div>
+        {selectedPlayers.map(p => {
+          const u = usersList.find(x => x.username === p);
+          return (
+            <span key={p}>
+              {u ? `${u.name} ${u.surname}` : p}
+            </span>
+          );
+        })}
+      </div>
 
-
-      {/* SLOT con nomi ✅ */}
+      {/* SLOT */}
       {courts.map(court => (
         <div key={court}>
           <h3 style={{ textAlign: "center" }}>{court}</h3>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4,1fr)",
-              gap: 8
-            }}
-          >
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4,1fr)"
+          }}>
             {hours.map(hour => {
               const booking = bookings.find(
                 b =>
@@ -459,46 +368,36 @@ if (view === "dashboard") {
               );
 
               return (
-<button
-  key={hour}
-  onClick={() =>
-    booking
-      ? cancelBooking(court, hour)
-      : bookSlot(court, hour)
-  }
-  style={{
-    height: 110,                // ✅ più grande
-    borderRadius: 12,
-    backgroundColor: getColor(booking),
-    color: "white",
-    padding: 6,
-    fontSize: 11,
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    alignItems: "center"
-  }}
->
-  {/* ORA */}
-  <div style={{ fontSize: 14, fontWeight: "bold" }}>
-    {hour}:00
-  </div>
+                <button
+                  key={hour}
+                  onClick={() =>
+                    booking
+                      ? cancelBooking(court, hour)
+                      : bookSlot(court, hour)
+                  }
+                  style={{
+                    height: 110,
+                    backgroundColor: getColor(booking),
+                    color: "white"
+                  }}
+                >
+                  <div>{hour}:00</div>
 
-  {/* GIOCATORI */}
-  {booking && (
-    <div style={{ fontSize: 11, marginTop: 4 }}>
-      {booking.players.map((p, i) => {
-        const u = usersList.find(x => x.username === p);
+                  {booking &&
+                    booking.players.map((p, i) => {
+                      const u = usersList.find(x => x.username === p);
 
-        return (
-          <div key={i}>
-            {u ? `${u.name} ${u.surname}` : p}
-          </div>
-        );
-      })}
-    </div>
-  )}
-</button>
+                      return (
+                        <div key={i}>
+                          {p === "maestro"
+                            ? "Maestro"
+                            : u
+                              ? `${u.name} ${u.surname}`
+                              : p}
+                        </div>
+                      );
+                    })}
+                </button>
               );
             })}
           </div>
@@ -507,3 +406,4 @@ if (view === "dashboard") {
     </div>
   );
 }
+``
