@@ -4,10 +4,10 @@ const hours = Array.from({ length: 17 }, (_, i) => i + 7);
 const courts = ["Campo 1", "Campo 2"];
 
 const initialUsers = [
-  { name: "Mario", pin: null, role: "player" },
-  { name: "Luca", pin: null, role: "player" },
-  { name: "Anna", pin: null, role: "player" },
-  { name: "Maestro", pin: "9999", role: "maestro" }
+  { name: "Mario", pin: null },
+  { name: "Luca", pin: null },
+  { name: "Anna", pin: null },
+  { name: "Maestro", pin: "9999" }
 ];
 
 export default function App() {
@@ -22,8 +22,8 @@ export default function App() {
 
   const todayStr = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
-  const [weekOffset, setWeekOffset] = useState(0);
 
+  // LOGIN
   const handleLogin = () => {
     const found = users.find(
       (u) => u.name.toLowerCase() === user.toLowerCase()
@@ -57,22 +57,8 @@ export default function App() {
     setLoggedUser(found.name);
   };
 
-  const getWeekDates = () => {
-    const start = new Date();
-    start.setDate(start.getDate() + weekOffset * 7);
-
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      return d.toISOString().split("T")[0];
-    });
-  };
-
-  const weekDates = getWeekDates();
-
+  // PRENOTAZIONE
   const bookSlot = (court, hour) => {
-    if (!loggedUser) return;
-
     let players = playersInput
       .split(",")
       .map((p) => p.trim())
@@ -89,28 +75,23 @@ export default function App() {
 
     for (let p of players) {
       const active = bookings.filter(
-        (b) =>
-          b.players.includes(p) &&
-          b.date >= todayStr
+        (b) => b.players.includes(p) && b.date >= todayStr
       );
 
-      if (
-        p.toLowerCase() !== "maestro" &&
-        active.length >= 2
-      ) {
+      if (p.toLowerCase() !== "maestro" && active.length >= 2) {
         alert(p + " ha già 2 ore attive");
         return;
       }
     }
 
-    const already = bookings.find(
+    const exists = bookings.find(
       (b) =>
         b.court === court &&
         b.hour === hour &&
         b.date === selectedDate
     );
 
-    if (already) return;
+    if (exists) return;
 
     setBookings([
       ...bookings,
@@ -121,16 +102,14 @@ export default function App() {
   };
 
   const cancelBooking = (court, hour) => {
-    setBookings(
-      bookings.filter(
-        (b) =>
-          !(
-            b.court === court &&
-            b.hour === hour &&
-            b.date === selectedDate
-          )
-      )
-    );
+    setBookings(bookings.filter(
+      (b) =>
+        !(
+          b.court === court &&
+          b.hour === hour &&
+          b.date === selectedDate
+        )
+    ));
   };
 
   const getColor = (booking) => {
@@ -147,6 +126,7 @@ export default function App() {
     return "#007BFF";
   };
 
+  // LOGIN VIEW
   if (!loggedUser) {
     return (
       <div style={{ padding: 20 }}>
@@ -169,61 +149,7 @@ export default function App() {
 
         <br /><br />
 
-        <button onClick={handleLogin}>
-          Entra
-        </button>
-      </div>
-    );
-  }
-
-  if (view === "dashboard") {
-    return (
-      <div style={{ padding: 20 }}>
-        <h1>Dashboard</h1>
-
-        <button onClick={() => setView("booking")}>Torna</button>
-
-        <div>
-          <button onClick={() => setWeekOffset(weekOffset - 1)}>←</button>
-          <button onClick={() => setWeekOffset(weekOffset + 1)}>→</button>
-        </div>
-
-        {courts.map((court) => (
-          <div key={court}>
-            <h2>{court}</h2>
-
-            {weekDates.map((date) => (
-              <div key={date}>
-                <strong>{date}</strong>
-
-                <div style={{ display: "flex", gap: 5 }}>
-                  {hours.map((hour) => {
-                    const booking = bookings.find(
-                      (b) =>
-                        b.court === court &&
-                        b.hour === hour &&
-                        b.date === date
-                    );
-
-                    return (
-                      <div
-                        key={hour}
-                        style={{
-                          padding: 5,
-                          backgroundColor: getColor(booking),
-                          color: "white",
-                          fontSize: 10
-                        }}
-                      >
-                        {hour}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
+        <button onClick={handleLogin}>Entra</button>
       </div>
     );
   }
@@ -231,10 +157,6 @@ export default function App() {
   return (
     <div style={{ padding: 20 }}>
       <h2>Utente: {loggedUser}</h2>
-
-      <button onClick={() => setView("dashboard")}>
-        Dashboard
-      </button>
 
       <div>
         <input
@@ -256,7 +178,11 @@ export default function App() {
         <div key={court}>
           <h3>{court}</h3>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4,1fr)",
+            gap: 10
+          }}>
             {hours.map((hour) => {
               const booking = bookings.find(
                 (b) =>
@@ -268,3 +194,38 @@ export default function App() {
               return (
                 <button
                   key={hour}
+                  onClick={() => {
+                    if (booking) {
+                      if (
+                        booking.players.includes(loggedUser) ||
+                        loggedUser.toLowerCase() === "maestro"
+                      ) {
+                        cancelBooking(court, hour);
+                      } else {
+                        alert("Non puoi cancellare");
+                      }
+                    } else {
+                      bookSlot(court, hour);
+                    }
+                  }}
+                  style={{
+                    height: 60,
+                    backgroundColor: getColor(booking),
+                    color: "white"
+                  }}
+                >
+                  {hour}
+                  {booking && (
+                    <div style={{ fontSize: 10 }}>
+                      {booking.players.join(", ")}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
