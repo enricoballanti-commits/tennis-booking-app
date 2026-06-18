@@ -12,16 +12,21 @@ const courts = ["Campo 1", "Campo 2"];
 
 export default function App() {
   const [bookings, setBookings] = useState([]);
+  const [usersList, setUsersList] = useState([]);
+
   const [user, setUser] = useState("");
   const [pin, setPin] = useState("");
   const [loggedUser, setLoggedUser] = useState(null);
 
-  const [playersInput, setPlayersInput] = useState("");
+  const [selectedPlayers, setSelectedPlayers] = useState([]);
+  const [search, setSearch] = useState("");
+  const [filteredUsers, setFilteredUsers] = useState([]);
+
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
 
-  // ✅ Carica prenotazioni da Supabase
+  // ✅ LOAD BOOKINGS
   const loadBookings = async () => {
     const { data, error } = await supabase
       .from("bookings")
@@ -40,9 +45,35 @@ export default function App() {
     setBookings(parsed);
   };
 
+  // ✅ LOAD USERS
+  const loadUsers = async () => {
+    const { data } = await supabase
+      .from("users")
+      .select("*");
+
+    setUsersList(data || []);
+  };
+
   useEffect(() => {
     loadBookings();
+    loadUsers();
   }, []);
+
+  // ✅ FILTER USERS
+  useEffect(() => {
+    if (!search) {
+      setFilteredUsers([]);
+      return;
+    }
+
+    const result = usersList.filter((u) =>
+      (u.name + " " + u.surname + " " + u.username)
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    );
+
+    setFilteredUsers(result);
+  }, [search, usersList]);
 
   // ✅ LOGIN
   const handleLogin = async () => {
@@ -66,7 +97,6 @@ export default function App() {
       return;
     }
 
-    // primo accesso
     if (!found.pin) {
       if (!pin) {
         alert("Inserisci PIN");
@@ -92,23 +122,35 @@ export default function App() {
 
   // ✅ PRENOTAZIONE
   const bookSlot = async (court, hour) => {
-    let players = playersInput
-      .split(",")
-      .map((p) => p.trim())
-      .filter((p) => p !== "");
-
-    if (!players.includes(loggedUser)) {
-      players.unshift(loggedUser);
+    if (!selectedPlayers.includes(loggedUser)) {
+      selectedPlayers.unshift(loggedUser);
     }
 
-    if (players.length !== 2 && players.length !== 4) {
-      alert("Inserisci 2 o 4 giocatori");
+    if (selectedPlayers.length !== 2 && selectedPlayers.length !== 4) {
+      alert("Seleziona 2 o 4 giocatori");
       return;
     }
 
     const today = new Date().toISOString().split("T")[0];
 
-    for (let p of players) {
+    // controllo utenti validi
+    for (let p of selectedPlayers) {
+      const isRegistered = usersList.some(
+        (u) =>
+          u.username &&
+          u.username.toLowerCase() === p.toLowerCase()
+      );
+
+      const isExternal = p.toLowerCase().includes("esterno");
+
+      if (!isRegistered && !isExternal) {
+        alert("Giocatore non valido: " + p);
+        return;
+      }
+    }
+
+    // controllo 2 ore attive
+    for (let p of selectedPlayers) {
       const active = bookings.filter(
         (b) =>
           b.players.includes(p) &&
@@ -130,22 +172,21 @@ export default function App() {
 
     if (exists) return;
 
-    // ✅ SALVA SU DB
     await supabase.from("bookings").insert([
       {
         court,
         hour,
         date: selectedDate,
-        players: players.join(","),
+        players: selectedPlayers.join(","),
         created_by: loggedUser
       }
     ]);
 
-    setPlayersInput("");
+    setSelectedPlayers([]);
     loadBookings();
   };
 
-  // ✅ CANCELLAZIONE
+  // ✅ CANCELLA
   const cancelBooking = async (court, hour) => {
     await supabase
       .from("bookings")
@@ -179,7 +220,7 @@ export default function App() {
         <h1>Accesso</h1>
 
         <input
-          placeholder="Username (es: MARROS)"
+          placeholder="Username"
           value={user}
           onChange={(e) => setUser(e.target.value)}
         />
@@ -205,21 +246,50 @@ export default function App() {
     <div style={{ padding: 20 }}>
       <h2>Utente: {loggedUser}</h2>
 
+      {/* SEARCH */}
+      <input
+        placeholder="Cerca giocatori..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
+      {/* LISTA FILTRATA */}
+      {filteredUsers.map((u) => (
+        <div
+          key={u.id}
+          style={{ cursor: "pointer", padding: 5 }}
+          onClick={() => {
+            if (!selectedPlayers.includes(u.username)) {
+              setSelectedPlayers([...selectedPlayers, u.username]);
+            }
+            setSearch("");
+          }}
+        >
+          {u.name} {u.surname} ({u.username})
+        </div>
+      ))}
+
+      {/* ESTERNO */}
+      <button
+        onClick={() =>
+          setSelectedPlayers([...selectedPlayers, "esterno"])
+        }
+      >
+        + Esterno
+      </button>
+
+      {/* MOSTRA GIOCATORI */}
       <div>
-        <input
-          placeholder="Giocatori (es: LUCBIA, ANNVER)"
-          value={playersInput}
-          onChange={(e) => setPlayersInput(e.target.value)}
-        />
+        <strong>Giocatori:</strong>{" "}
+        {selectedPlayers.join(", ")}
       </div>
 
-      <div>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-        />
-      </div>
+      {/* DATA */}
+      <input
+        type="date"
+        value={selectedDate}
+        onChange={(e) => setSelectedDate(e.target.value)}
+      />
 
       {courts.map((court) => (
         <div key={court}>
@@ -250,8 +320,6 @@ export default function App() {
                         loggedUser.toLowerCase() === "maestro"
                       ) {
                         cancelBooking(court, hour);
-                      } else {
-                        alert("Non puoi cancellare");
                       }
                     } else {
                       bookSlot(court, hour);
@@ -260,8 +328,7 @@ export default function App() {
                   style={{
                     height: 60,
                     backgroundColor: getColor(booking),
-                    color: "white",
-                    borderRadius: 8
+                    color: "white"
                   }}
                 >
                   {hour}
