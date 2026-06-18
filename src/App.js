@@ -27,9 +27,6 @@ const handleLogin = async () => {
     .from("users")
     .select("*");
 
-  console.log("DATA:", data);
-  console.log("ERROR:", error);
-
   if (error || !data) {
     alert("Errore database");
     return;
