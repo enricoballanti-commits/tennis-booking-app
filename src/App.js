@@ -356,25 +356,83 @@ if (view === "dashboard") {
         }}
       />
 
-      {/* GIOCATORI */}
-      <input
-        placeholder="Cerca giocatori..."
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        style={{ width: "100%", padding: 12 }}
-      />
+{/* GIOCATORI */}
+<input
+  placeholder="Cerca giocatori..."
+  value={search}
+  onChange={e => setSearch(e.target.value)}
+  style={{ width: "100%", padding: 12 }}
+/>
 
-      {filteredUsers.map(u => (
-        <div
-          key={u.id}
-          onClick={() => {
-            setSelectedPlayers([...selectedPlayers, u.username]);
-            setSearch("");
+{/* LISTA RISULTATI */}
+{filteredUsers.map(u => (
+  <div
+    key={u.id}
+    onClick={() => {
+      if (!selectedPlayers.includes(u.username)) {
+        setSelectedPlayers([...selectedPlayers, u.username]);
+      }
+      setSearch("");
+    }}
+    style={{
+      padding: 10,
+      borderBottom: "1px solid #ddd"
+    }}
+  >
+    {u.name} {u.surname}
+  </div>
+))}
+
+{/* ✅ QUI METTI I BADGE */}
+<div style={{ marginTop: 10 }}>
+  {selectedPlayers.map((p) => {
+    const u = usersList.find(x => x.username === p);
+
+    return (
+      <span
+        key={p}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          background: "#007BFF",
+          color: "white",
+          padding: "6px 12px",
+          borderRadius: 20,
+          margin: 4,
+          fontSize: 12
+        }}
+      >
+        {u ? `${u.name} ${u.surname}` : p}
+
+        <span
+          onClick={() =>
+            setSelectedPlayers(
+              selectedPlayers.filter(x => x !== p)
+            )
+          }
+          style={{
+            marginLeft: 8,
+            cursor: "pointer",
+            fontWeight: "bold"
           }}
         >
-          {u.name} {u.surname}
-        </div>
-      ))}
+          ✕
+        </span>
+      </span>
+    );
+  })}
+</div>
+
+{/* ESTERNO */}
+<button
+  onClick={() =>
+    setSelectedPlayers([...selectedPlayers, "esterno"])
+  }
+  style={{ marginTop: 10 }}
+>
+  + Esterno
+</button>
+
 
       {/* SLOT con nomi ✅ */}
       {courts.map(court => (
