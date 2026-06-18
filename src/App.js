@@ -49,19 +49,25 @@ export default function App() {
       return;
     }
 
-    const today = new Date();
+    // ✅ uso stringhe data (più sicuro)
+const todayStr = new Date().toISOString().split("T")[0];
 
-    for (let p of players) {
-      const activeBookings = bookings.filter((b) => {
-        const bookingDate = new Date(b.date);
-        return b.players.includes(p) && bookingDate >= today;
-      });
+for (let p of players) {
+  const activeBookings = bookings.filter(
+    (b) =>
+      b.players.includes(p) &&
+      b.date >= todayStr
+  );
 
-      if (p.toLowerCase() !== "maestro" && activeBookings.length >= 2) {
-        alert(`${p} ha già 2 ore attive`);
-        return;
-      }
-    }
+  if (
+    p.toLowerCase() !== "maestro" &&
+    activeBookings.length >= 2
+  ) {
+    alert(`${p} ha già 2 ore attive`);
+    return;
+  }
+}
+``
 
     const alreadyBooked = bookings.find(
       (b) =>
