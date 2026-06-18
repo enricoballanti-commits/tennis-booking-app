@@ -112,7 +112,7 @@ export default function App() {
     setLoggedUser(found.username);
   };
 
-  // ✅ BOOK SLOT (con MAESTRO)
+  // ✅ BOOK SLOT
   const bookSlot = async (court, hour) => {
     let players = [...selectedPlayers];
     const isMaestro = loggedUser.toLowerCase() === "maestro";
@@ -123,7 +123,7 @@ export default function App() {
       }
 
       if (players.length !== 2 && players.length !== 4) {
-        alert("Devi selezionare 2 o 4 giocatori");
+        alert("Seleziona 2 o 4 giocatori");
         return;
       }
 
@@ -150,7 +150,7 @@ export default function App() {
 
     if (exists) return;
 
-    // ✅ maestro prenota da solo
+    // ✅ MAESTRO
     if (isMaestro) {
       players = ["maestro"];
     }
@@ -169,7 +169,7 @@ export default function App() {
     loadBookings();
   };
 
-  // ✅ CANCELLA
+  // ✅ CANCEL
   const cancelBooking = async (court, hour) => {
     await supabase
       .from("bookings")
@@ -185,18 +185,13 @@ export default function App() {
   const getColor = booking => {
     if (!booking) return "#4CAF50";
 
-    if (booking.players.includes("maestro")) {
-      return "#FFA500"; // 🟠 maestro
-    }
-
-    if (booking.players.some(p => p.includes("esterno"))) {
-      return "#FFA500";
-    }
+    if (booking.players.includes("maestro")) return "#FFA500";
+    if (booking.players.some(p => p.includes("esterno"))) return "#FFA500";
 
     return "#007BFF";
   };
 
-  // LOGIN UI
+  // LOGIN
   if (!loggedUser) {
     return (
       <div style={{ padding: 30, maxWidth: 400, margin: "auto" }}>
@@ -232,7 +227,7 @@ export default function App() {
     );
   }
 
-  // ✅ DASHBOARD
+  // DASHBOARD
   if (view === "dashboard") {
     return (
       <div style={{ padding: 10 }}>
@@ -242,31 +237,63 @@ export default function App() {
 
         <h2 style={{ textAlign: "center" }}>📅 Tabellone</h2>
 
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <button onClick={() => setWeekOffset(weekOffset - 1)}>
+            ← prec
+          </button>
+          <button onClick={() => setWeekOffset(weekOffset + 1)}>
+            succ →
+          </button>
+        </div>
+
         {courts.map(court => (
           <div key={court}>
             <h3 style={{ textAlign: "center" }}>{court}</h3>
 
-            {hours.map(hour => {
-              const b = bookings.find(
-                x =>
-                  x.court === court &&
-                  x.hour === hour &&
-                  x.date === selectedDate
-              );
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "60px repeat(7,1fr)"
+            }}>
+              <div></div>
 
-              return (
-                <div key={hour}>
-                  {hour}:00 - {b ? "✔" : "Libero"}
-                </div>
-              );
-            })}
+              {weekDates.map(d => (
+                <div key={d.date}>{d.label}</div>
+              ))}
+
+              {hours.map(hour => (
+                <React.Fragment key={hour}>
+                  <div>{hour}:00</div>
+
+                  {weekDates.map(d => {
+                    const booking = bookings.find(
+                      x =>
+                        x.court === court &&
+                        x.hour === hour &&
+                        x.date === d.date
+                    );
+
+                    return (
+                      <div
+                        key={d.date + hour}
+                        style={{
+                          height: 30,
+                          background: getColor(booking)
+                        }}
+                      >
+                        {booking ? "✔" : ""}
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+            </div>
           </div>
         ))}
       </div>
     );
   }
 
-  // ✅ APP
+  // APP
   return (
     <div style={{ padding: 15, maxWidth: 500, margin: "auto" }}>
       <h1 style={{ textAlign: "center" }}>🎾 Prenotazioni</h1>
@@ -287,7 +314,6 @@ export default function App() {
         Vai al Tabellone
       </button>
 
-      {/* DATA */}
       <input
         type="date"
         value={selectedDate}
@@ -295,8 +321,8 @@ export default function App() {
         style={{ width: "100%", padding: 10 }}
       />
 
-      {/* ✅ GIOCATORI solo se NON maestro */}
-      {loggedUser !== "maestro" && (
+      {/* GIOCATORI solo se NON maestro */}
+      {loggedUser.toLowerCase() !== "maestro" && (
         <>
           <input
             placeholder="Cerca giocatori..."
@@ -310,10 +336,7 @@ export default function App() {
               key={u.id}
               onClick={() => {
                 if (!selectedPlayers.includes(u.username)) {
-                  setSelectedPlayers([
-                    ...selectedPlayers,
-                    u.username
-                  ]);
+                  setSelectedPlayers([...selectedPlayers, u.username]);
                 }
                 setSearch("");
               }}
@@ -324,9 +347,7 @@ export default function App() {
 
           <div>
             {selectedPlayers.map(p => {
-              const u = usersList.find(
-                x => x.username === p
-              );
+              const u = usersList.find(x => x.username === p);
               return (
                 <span key={p}>
                   {u ? `${u.name} ${u.surname}` : p}
@@ -342,12 +363,10 @@ export default function App() {
         <div key={court}>
           <h3 style={{ textAlign: "center" }}>{court}</h3>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4,1fr)"
-            }}
-          >
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4,1fr)"
+          }}>
             {hours.map(hour => {
               const booking = bookings.find(
                 b =>
@@ -359,11 +378,22 @@ export default function App() {
               return (
                 <button
                   key={hour}
-                  onClick={() =>
-                    booking
-                      ? cancelBooking(court, hour)
-                      : bookSlot(court, hour)
-                  }
+                  onClick={() => {
+                    if (!booking) {
+                      bookSlot(court, hour);
+                      return;
+                    }
+
+                    const canCancel =
+                      booking.created_by === loggedUser ||
+                      loggedUser.toLowerCase() === "maestro";
+
+                    if (canCancel) {
+                      cancelBooking(court, hour);
+                    } else {
+                      alert("Non puoi cancellare questa prenotazione");
+                    }
+                  }}
                   style={{
                     height: 100,
                     backgroundColor: getColor(booking),
@@ -377,15 +407,10 @@ export default function App() {
                       {booking.players.includes("maestro")
                         ? "Maestro"
                         : booking.players.map((p, i) => {
-                            const u = usersList.find(
-                              x => x.username === p
-                            );
-
+                            const u = usersList.find(x => x.username === p);
                             return (
                               <div key={i}>
-                                {u
-                                  ? `${u.name} ${u.surname}`
-                                  : p}
+                                {u ? `${u.name} ${u.surname}` : p}
                               </div>
                             );
                           })}
