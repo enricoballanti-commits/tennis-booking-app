@@ -1,51 +1,53 @@
 import React, { useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// 🔴 INSERISCI QUI I TUOI DATI
+const supabase = createClient(
+  "https://dfxcscxkwabshseoxjte.supabase.co/rest/v1/",
+  "sb_publishable_V89vpZmV3Ao4H_uEcrYMcQ_Q-zyG8zA"
+);
 
 const hours = Array.from({ length: 17 }, (_, i) => i + 7);
 const courts = ["Campo 1", "Campo 2"];
-
-const initialUsers = [
-  { name: "Mario", pin: null },
-  { name: "Luca", pin: null },
-  { name: "Anna", pin: null },
-  { name: "Maestro", pin: "9999" }
-];
 
 export default function App() {
   const [bookings, setBookings] = useState([]);
   const [user, setUser] = useState("");
   const [pin, setPin] = useState("");
-  const [users, setUsers] = useState(initialUsers);
   const [loggedUser, setLoggedUser] = useState(null);
 
   const [playersInput, setPlayersInput] = useState("");
-  const [view, setView] = useState("booking");
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
 
-  const todayStr = new Date().toISOString().split("T")[0];
-  const [selectedDate, setSelectedDate] = useState(todayStr);
+  // ✅ LOGIN
+  const handleLogin = async () => {
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .ilike("username", user);
 
-  // LOGIN
-  const handleLogin = () => {
-    const found = users.find(
-      (u) => u.name.toLowerCase() === user.toLowerCase()
-    );
-
-    if (!found) {
+    if (error || data.length === 0) {
       alert("Utente non valido");
       return;
     }
 
+    const found = data[0];
+
+    // primo accesso
     if (!found.pin) {
       if (!pin) {
         alert("Inserisci PIN");
         return;
       }
 
-      const updated = users.map((u) =>
-        u.name === found.name ? { ...u, pin } : u
-      );
+      await supabase
+        .from("users")
+        .update({ pin })
+        .eq("id", found.id);
 
-      setUsers(updated);
-      setLoggedUser(found.name);
+      setLoggedUser(found.username);
       return;
     }
 
@@ -54,10 +56,10 @@ export default function App() {
       return;
     }
 
-    setLoggedUser(found.name);
+    setLoggedUser(found.username);
   };
 
-  // PRENOTAZIONE
+  // ✅ PRENOTAZIONE
   const bookSlot = (court, hour) => {
     let players = playersInput
       .split(",")
@@ -73,9 +75,13 @@ export default function App() {
       return;
     }
 
+    const today = new Date().toISOString().split("T")[0];
+
     for (let p of players) {
       const active = bookings.filter(
-        (b) => b.players.includes(p) && b.date >= todayStr
+        (b) =>
+          b.players.includes(p) &&
+          b.date >= today
       );
 
       if (p.toLowerCase() !== "maestro" && active.length >= 2) {
@@ -97,21 +103,9 @@ export default function App() {
       ...bookings,
       { court, hour, players, date: selectedDate }
     ]);
-
-    setPlayersInput("");
   };
 
-  const cancelBooking = (court, hour) => {
-    setBookings(bookings.filter(
-      (b) =>
-        !(
-          b.court === court &&
-          b.hour === hour &&
-          b.date === selectedDate
-        )
-    ));
-  };
-
+  // ✅ COLORI
   const getColor = (booking) => {
     if (!booking) return "#4CAF50";
 
@@ -126,16 +120,16 @@ export default function App() {
     return "#007BFF";
   };
 
-  // LOGIN VIEW
+  // ✅ LOGIN VIEW
   if (!loggedUser) {
     return (
       <div style={{ padding: 20 }}>
         <h1>Accesso</h1>
 
         <input
-          placeholder="Nome"
+          placeholder="Username (es: MARROS)"
           value={user}
-          onChange={(e) => setUser(e.target.value)}
+          onChange={(e) => setUser(e.target.value.toUpperCase())}
         />
 
         <br />
@@ -154,15 +148,16 @@ export default function App() {
     );
   }
 
+  // ✅ APP
   return (
     <div style={{ padding: 20 }}>
       <h2>Utente: {loggedUser}</h2>
 
       <div>
         <input
-          placeholder="Giocatori"
+          placeholder="Giocatori (es: LUCBIA, ANNVER)"
           value={playersInput}
-          onChange={(e) => setPlayersInput(e.target.value)}
+          onChange={(e) => setPlayersInput(e.target.value.toUpperCase())}
         />
       </div>
 
@@ -178,11 +173,7 @@ export default function App() {
         <div key={court}>
           <h3>{court}</h3>
 
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4,1fr)",
-            gap: 10
-          }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
             {hours.map((hour) => {
               const booking = bookings.find(
                 (b) =>
@@ -194,20 +185,7 @@ export default function App() {
               return (
                 <button
                   key={hour}
-                  onClick={() => {
-                    if (booking) {
-                      if (
-                        booking.players.includes(loggedUser) ||
-                        loggedUser.toLowerCase() === "maestro"
-                      ) {
-                        cancelBooking(court, hour);
-                      } else {
-                        alert("Non puoi cancellare");
-                      }
-                    } else {
-                      bookSlot(court, hour);
-                    }
-                  }}
+                  onClick={() => bookSlot(court, hour)}
                   style={{
                     height: 60,
                     backgroundColor: getColor(booking),
