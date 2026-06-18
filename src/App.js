@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
+// 🔴 METTI I TUOI DATI
 const supabase = createClient(
-  "https://dfxcscxkwabshseoxjte.supabase.co",
-  "sb_publishable_V89vpZmV3Ao4H_uEcrYMcQ_Q-zyG8zA"
+  "YOUR_SUPABASE_URL",
+  "YOUR_SUPABASE_ANON_KEY"
 );
 
 const hours = Array.from({ length: 17 }, (_, i) => i + 7);
@@ -27,7 +28,7 @@ export default function App() {
     new Date().toISOString().split("T")[0]
   );
 
-  // LOAD
+  // ✅ LOAD DATA
   const loadBookings = async () => {
     const { data } = await supabase.from("bookings").select("*");
 
@@ -51,9 +52,12 @@ export default function App() {
     loadUsers();
   }, []);
 
-  // FILTER
+  // ✅ FILTER
   useEffect(() => {
-    if (!search) return setFilteredUsers([]);
+    if (!search) {
+      setFilteredUsers([]);
+      return;
+    }
 
     setFilteredUsers(
       usersList.filter(u =>
@@ -64,7 +68,7 @@ export default function App() {
     );
   }, [search, usersList]);
 
-  // LOGIN
+  // ✅ LOGIN
   const handleLogin = async () => {
     const { data } = await supabase.from("users").select("*");
 
@@ -76,6 +80,8 @@ export default function App() {
     if (!found) return alert("Utente non valido");
 
     if (!found.pin) {
+      if (!pin) return alert("Inserisci PIN");
+
       await supabase
         .from("users")
         .update({ pin })
@@ -90,7 +96,7 @@ export default function App() {
     setLoggedUser(found.username);
   };
 
-  // PRENOTA
+  // ✅ PRENOTAZIONE
   const bookSlot = async (court, hour) => {
     let players = [...selectedPlayers];
 
@@ -116,7 +122,7 @@ export default function App() {
     loadBookings();
   };
 
-  // CANCEL
+  // ✅ CANCELLA
   const cancelBooking = async (court, hour) => {
     await supabase
       .from("bookings")
@@ -128,6 +134,7 @@ export default function App() {
     loadBookings();
   };
 
+  // ✅ COLORI
   const getColor = booking => {
     if (!booking) return "#4CAF50";
     if (booking.players.some(p => p.includes("esterno")))
@@ -137,27 +144,53 @@ export default function App() {
     return "#007BFF";
   };
 
-  // LOGIN
+  // ✅ LOGIN VIEW
   if (!loggedUser) {
     return (
-      <div style={{ padding: 20 }}>
-        <h2>Login</h2>
-        <input value={user} onChange={e => setUser(e.target.value)} />
+      <div style={{ padding: 20, maxWidth: 400, margin: "auto" }}>
+        <h2 style={{ textAlign: "center" }}>Login</h2>
+
+        <input
+          placeholder="Username"
+          value={user}
+          onChange={e => setUser(e.target.value)}
+          style={{ width: "100%", padding: 10, marginBottom: 10 }}
+        />
+
         <input
           type="password"
+          placeholder="PIN"
           value={pin}
           onChange={e => setPin(e.target.value)}
+          style={{ width: "100%", padding: 10 }}
         />
-        <button onClick={handleLogin}>Entra</button>
+
+        <button
+          onClick={handleLogin}
+          style={{
+            marginTop: 10,
+            width: "100%",
+            padding: 12,
+            background: "#007BFF",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8
+          }}
+        >
+          Entra
+        </button>
       </div>
     );
   }
 
-  // DASHBOARD
+  // ✅ DASHBOARD
   if (view === "dashboard") {
     return (
-      <div style={{ padding: 10 }}>
-        <button onClick={() => setView("booking")}>← Torna</button>
+      <div style={{ padding: 15 }}>
+        <button onClick={() => setView("booking")}>
+          ← Torna
+        </button>
+
         <h2>Dashboard</h2>
 
         {courts.map(court => (
@@ -174,7 +207,8 @@ export default function App() {
 
               return (
                 <div key={hour}>
-                  {hour}:00 - {b ? b.players.join(", ") : "Libero"}
+                  <strong>{hour}:00</strong> -{" "}
+                  {b ? b.players.join(", ") : "Libero"}
                 </div>
               );
             })}
@@ -184,15 +218,23 @@ export default function App() {
     );
   }
 
-  // APP
+  // ✅ APP
   return (
-    <div style={{ padding: 10, maxWidth: 450, margin: "auto" }}>
-      <h2>🎾 Prenotazioni</h2>
+    <div style={{ padding: 15, maxWidth: 500, margin: "auto" }}>
+      <h2 style={{ textAlign: "center" }}>🎾 Prenotazioni</h2>
 
-      <button onClick={() => setView("dashboard")}>
-        Dashboard
+      <p style={{ textAlign: "center" }}>
+        Utente: <strong>{loggedUser}</strong>
+      </p>
+
+      <button
+        onClick={() => setView("dashboard")}
+        style={{ width: "100%", marginBottom: 10 }}
+      >
+        Vai a Dashboard
       </button>
 
+      {/* SEARCH */}
       <input
         placeholder="Cerca giocatori"
         value={search}
@@ -204,43 +246,72 @@ export default function App() {
         <div
           key={u.id}
           onClick={() => {
-            setSelectedPlayers([...selectedPlayers, u.username]);
+            if (!selectedPlayers.includes(u.username)) {
+              setSelectedPlayers([
+                ...selectedPlayers,
+                u.username
+              ]);
+            }
             setSearch("");
           }}
-          style={{ padding: 10, borderBottom: "1px solid #ccc" }}
+          style={{
+            padding: 10,
+            borderBottom: "1px solid #ddd",
+            cursor: "pointer"
+          }}
         >
           {u.name} {u.surname}
         </div>
       ))}
 
-      {/* BADGE giocatori */}
-      <div>
+      {/* BADGE */}
+      <div style={{ marginTop: 10 }}>
         {selectedPlayers.map(p => {
           const u = usersList.find(x => x.username === p);
 
           return (
             <span
               key={p}
-              onClick={() =>
-                setSelectedPlayers(selectedPlayers.filter(x => x !== p))
-              }
               style={{
-                display: "inline-block",
+                display: "inline-flex",
+                alignItems: "center",
                 background: "#007BFF",
-                color: "white",
-                padding: "6px 12px",
+                color: "#fff",
                 borderRadius: 20,
-                margin: 4,
-                cursor: "pointer"
+                padding: "6px 12px",
+                margin: 4
               }}
             >
-              {u ? `${u.name} ${u.surname}` : p} ✕
+              {u ? `${u.name} ${u.surname}` : p}
+              <span
+                onClick={() =>
+                  setSelectedPlayers(
+                    selectedPlayers.filter(x => x !== p)
+                  )
+                }
+                style={{ marginLeft: 6, cursor: "pointer" }}
+              >
+                ✕
+              </span>
             </span>
           );
         })}
       </div>
 
-      <button onClick={() => setSelectedPlayers([...selectedPlayers, "esterno"])}>
+      <button
+        onClick={() =>
+          setSelectedPlayers([...selectedPlayers, "esterno"])
+        }
+        style={{
+          marginTop: 10,
+          width: "100%",
+          padding: 10,
+          background: "#FFA500",
+          color: "#fff",
+          border: "none",
+          borderRadius: 8
+        }}
+      >
         + Esterno
       </button>
 
@@ -248,16 +319,17 @@ export default function App() {
         type="date"
         value={selectedDate}
         onChange={e => setSelectedDate(e.target.value)}
+        style={{ width: "100%", marginTop: 10 }}
       />
 
       {courts.map(court => (
-        <div key={court}>
+        <div key={court} style={{ marginTop: 20 }}>
           <h3>{court}</h3>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2,1fr)", // ✅ grande
+              gridTemplateColumns: "repeat(2,1fr)",
               gap: 10
             }}
           >
@@ -278,14 +350,18 @@ export default function App() {
                       : bookSlot(court, hour)
                   }
                   style={{
-                    height: 100, // ✅ più grande
-                    fontSize: 16,
-                    borderRadius: 12,
+                    height: 120,
+                    borderRadius: 14,
                     backgroundColor: getColor(booking),
-                    color: "white"
+                    color: "white",
+                    border: "none",
+                    padding: 10
                   }}
                 >
-                  <div>{hour}:00</div>
+                  <div style={{ fontSize: 18 }}>
+                    {hour}:00
+                  </div>
+
                   {booking && (
                     <div style={{ fontSize: 12 }}>
                       {booking.players.join(", ")}
