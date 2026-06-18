@@ -115,24 +115,25 @@ const getWeekDates = () => {
   };
 
   // PRENOTA ✅ (con blocco 2 ore mantenuto)
-  const bookSlot = async (court, hour) => {
-    // ✅ includo sempre l'utente loggato
-let players = [...selectedPlayers];
+const bookSlot = async (court, hour) => {
+  let players = [...selectedPlayers];
 
-if (!players.includes(loggedUser)) {
-  players = [loggedUser, ...players];
-}
+  const isMaestro = loggedUser.toLowerCase() === "maestro";
 
-// ✅ conteggio CORRETTO sempre aggiornato
-const totalPlayers = players.length;
+  // ✅ se NON è maestro → comportamento normale
+  if (!isMaestro) {
+    if (!players.includes(loggedUser)) {
+      players = [loggedUser, ...players];
+    }
 
-if (totalPlayers !== 2 && totalPlayers !== 4) {
-  alert(
-    `Hai selezionato ${totalPlayers} giocatori (incluso te). Servono 2 o 4.`
-  );
-  return;
-}
+    const totalPlayers = players.length;
 
+    if (totalPlayers !== 2 && totalPlayers !== 4) {
+      alert(
+        `Hai selezionato ${totalPlayers} giocatori (incluso te). Servono 2 o 4.`
+      );
+      return;
+    }
 
     const today = new Date().toISOString().split("T")[0];
 
@@ -151,41 +152,36 @@ if (totalPlayers !== 2 && totalPlayers !== 4) {
         return;
       }
     }
+  }
 
-    const exists = bookings.find(
-      (b) =>
-        b.court === court &&
-        b.hour === hour &&
-        b.date === selectedDate
-    );
+  // ✅ SLOT GIÀ OCCUPATO
+  const exists = bookings.find(
+    (b) =>
+      b.court === court &&
+      b.hour === hour &&
+      b.date === selectedDate
+  );
 
-    if (exists) return;
+  if (exists) return;
 
-    await supabase.from("bookings").insert([
-      {
-        court,
-        hour,
-        date: selectedDate,
-        players: players.join(","),
-        created_by: loggedUser
-      }
-    ]);
+  // ✅ SE MAESTRO → forzo valore
+  if (isMaestro) {
+    players = ["maestro"];
+  }
 
-    setSelectedPlayers([]);
-    loadBookings();
-  };
+  await supabase.from("bookings").insert([
+    {
+      court,
+      hour,
+      date: selectedDate,
+      players: players.join(","),
+      created_by: loggedUser
+    }
+  ]);
 
-  // CANCELLA
-  const cancelBooking = async (court, hour) => {
-    await supabase
-      .from("bookings")
-      .delete()
-      .eq("court", court)
-      .eq("hour", hour)
-      .eq("date", selectedDate);
-
-    loadBookings();
-  };
+  setSelectedPlayers([]);
+  loadBookings();
+};
 
   const getColor = booking => {
     if (!booking) return "#4CAF50";
