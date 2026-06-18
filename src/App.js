@@ -3,8 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 
 // 🔴 INSERISCI I TUOI DATI
 const supabase = createClient(
-  "https://dfxcscxkwabshseoxjte.supabase.co",
-  "sb_publishable_V89vpZmV3Ao4H_uEcrYMcQ_Q-zyG8zA"
+  "YOUR_SUPABASE_URL",
+  "YOUR_SUPABASE_ANON_KEY"
 );
 
 const hours = Array.from({ length: 17 }, (_, i) => i + 7);
@@ -32,17 +32,13 @@ export default function App() {
       .from("bookings")
       .select("*");
 
-    if (error) {
-      console.log(error);
-      return;
+    if (!error && data) {
+      const parsed = data.map((b) => ({
+        ...b,
+        players: b.players.split(",")
+      }));
+      setBookings(parsed);
     }
-
-    const parsed = data.map((b) => ({
-      ...b,
-      players: b.players.split(",")
-    }));
-
-    setBookings(parsed);
   };
 
   // ✅ LOAD USERS
@@ -77,16 +73,9 @@ export default function App() {
 
   // ✅ LOGIN
   const handleLogin = async () => {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*");
+    const { data } = await supabase.from("users").select("*");
 
-    if (error || !data) {
-      alert("Errore database");
-      return;
-    }
-
-    const found = data.find(
+    const found = data?.find(
       (u) =>
         u.username &&
         u.username.toLowerCase() === user.trim().toLowerCase()
@@ -122,39 +111,22 @@ export default function App() {
 
   // ✅ PRENOTAZIONE
   const bookSlot = async (court, hour) => {
-    if (!selectedPlayers.includes(loggedUser)) {
-      selectedPlayers.unshift(loggedUser);
+    let players = [...selectedPlayers];
+
+    if (!players.includes(loggedUser)) {
+      players.unshift(loggedUser);
     }
 
-    if (selectedPlayers.length !== 2 && selectedPlayers.length !== 4) {
+    if (players.length !== 2 && players.length !== 4) {
       alert("Seleziona 2 o 4 giocatori");
       return;
     }
 
     const today = new Date().toISOString().split("T")[0];
 
-    // controllo utenti validi
-    for (let p of selectedPlayers) {
-      const isRegistered = usersList.some(
-        (u) =>
-          u.username &&
-          u.username.toLowerCase() === p.toLowerCase()
-      );
-
-      const isExternal = p.toLowerCase().includes("esterno");
-
-      if (!isRegistered && !isExternal) {
-        alert("Giocatore non valido: " + p);
-        return;
-      }
-    }
-
-    // controllo 2 ore attive
-    for (let p of selectedPlayers) {
+    for (let p of players) {
       const active = bookings.filter(
-        (b) =>
-          b.players.includes(p) &&
-          b.date >= today
+        (b) => b.players.includes(p) && b.date >= today
       );
 
       if (p.toLowerCase() !== "maestro" && active.length >= 2) {
@@ -177,7 +149,7 @@ export default function App() {
         court,
         hour,
         date: selectedDate,
-        players: selectedPlayers.join(","),
+        players: players.join(","),
         created_by: loggedUser
       }
     ]);
@@ -201,63 +173,71 @@ export default function App() {
   // ✅ COLORI
   const getColor = (booking) => {
     if (!booking) return "#4CAF50";
-
-    if (booking.players.some(p => p.toLowerCase() === "maestro")) {
-      return "#ff4d4d";
-    }
-
-    if (booking.players.some(p => p.toLowerCase().includes("esterno"))) {
-      return "#FFA500";
-    }
-
+    if (booking.players.some(p => p.toLowerCase().includes("esterno"))) return "#FFA500";
+    if (booking.players.some(p => p.toLowerCase() === "maestro")) return "#ff4d4d";
     return "#007BFF";
   };
 
   // ✅ LOGIN VIEW
   if (!loggedUser) {
     return (
-      <div style={{ padding: 20 }}>
-        <h1>Accesso</h1>
+      <div style={{ padding: 20, maxWidth: 400, margin: "auto" }}>
+        <h2 style={{ textAlign: "center" }}>Accesso</h2>
 
         <input
           placeholder="Username"
           value={user}
           onChange={(e) => setUser(e.target.value)}
+          style={{ width: "100%", padding: 10, marginBottom: 10 }}
         />
-
-        <br />
 
         <input
           placeholder="PIN"
           type="password"
           value={pin}
           onChange={(e) => setPin(e.target.value)}
+          style={{ width: "100%", padding: 10 }}
         />
 
-        <br /><br />
-
-        <button onClick={handleLogin}>Entra</button>
+        <button
+          onClick={handleLogin}
+          style={{
+            marginTop: 10,
+            width: "100%",
+            padding: 12,
+            background: "#007BFF",
+            color: "white",
+            border: "none",
+            borderRadius: 8
+          }}
+        >
+          Entra
+        </button>
       </div>
     );
   }
 
-  // ✅ APP
+  // ✅ APP UI
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Utente: {loggedUser}</h2>
+    <div style={{ maxWidth: 500, margin: "auto", padding: 15 }}>
+      <h2 style={{ textAlign: "center" }}>🎾 Prenotazioni</h2>
+
+      <p style={{ textAlign: "center" }}>
+        Utente: <strong>{loggedUser}</strong>
+      </p>
 
       {/* SEARCH */}
       <input
         placeholder="Cerca giocatori..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        style={{ width: "100%", padding: 12, borderRadius: 8 }}
       />
 
-      {/* LISTA FILTRATA */}
       {filteredUsers.map((u) => (
         <div
           key={u.id}
-          style={{ cursor: "pointer", padding: 5 }}
+          style={{ padding: 10, borderBottom: "1px solid #eee", cursor: "pointer" }}
           onClick={() => {
             if (!selectedPlayers.includes(u.username)) {
               setSelectedPlayers([...selectedPlayers, u.username]);
@@ -274,14 +254,37 @@ export default function App() {
         onClick={() =>
           setSelectedPlayers([...selectedPlayers, "esterno"])
         }
+        style={{
+          width: "100%",
+          padding: 10,
+          marginTop: 10,
+          background: "#FFA500",
+          color: "white",
+          border: "none",
+          borderRadius: 8
+        }}
       >
         + Esterno
       </button>
 
-      {/* MOSTRA GIOCATORI */}
-      <div>
-        <strong>Giocatori:</strong>{" "}
-        {selectedPlayers.join(", ")}
+      {/* BADGE */}
+      <div style={{ marginTop: 10 }}>
+        {selectedPlayers.map((p, i) => (
+          <span
+            key={i}
+            style={{
+              background: "#007BFF",
+              color: "white",
+              padding: "5px 10px",
+              borderRadius: 20,
+              margin: 3,
+              display: "inline-block",
+              fontSize: 12
+            }}
+          >
+            {p}
+          </span>
+        ))}
       </div>
 
       {/* DATA */}
@@ -289,19 +292,19 @@ export default function App() {
         type="date"
         value={selectedDate}
         onChange={(e) => setSelectedDate(e.target.value)}
+        style={{ width: "100%", marginTop: 10, padding: 10 }}
       />
 
+      {/* CAMPI */}
       {courts.map((court) => (
-        <div key={court}>
+        <div key={court} style={{ marginTop: 20 }}>
           <h3>{court}</h3>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4,1fr)",
-              gap: 10
-            }}
-          >
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3,1fr)",
+            gap: 8
+          }}>
             {hours.map((hour) => {
               const booking = bookings.find(
                 (b) =>
@@ -326,16 +329,18 @@ export default function App() {
                     }
                   }}
                   style={{
-                    height: 60,
+                    height: 70,
+                    borderRadius: 10,
+                    border: "none",
                     backgroundColor: getColor(booking),
                     color: "white"
                   }}
                 >
-                  {hour}
+                  <div>{hour}:00</div>
                   {booking && (
                     <div style={{ fontSize: 10 }}>
-                      {booking.players.join(", ")}
-                    </div>
+                      {booking.players.join(", ")
+                    }</div>
                   )}
                 </button>
               );
