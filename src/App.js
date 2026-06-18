@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// 🔴 INSERISCI I TUOI DATI
 const supabase = createClient(
   "https://dfxcscxkwabshseoxjte.supabase.co",
   "sb_publishable_V89vpZmV3Ao4H_uEcrYMcQ_Q-zyG8zA"
 );
 
 const hours = Array.from({ length: 17 }, (_, i) => i + 7);
-const courts = ["Campo 1", "Campo 2"];
+const courts = ["Campo Bar", "Campo Strada"];
 
 export default function App() {
   const [bookings, setBookings] = useState([]);
@@ -22,31 +21,28 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [filteredUsers, setFilteredUsers] = useState([]);
 
+  const [view, setView] = useState("booking");
+
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
 
-  // ✅ LOAD BOOKINGS
+  // LOAD
   const loadBookings = async () => {
-    const { data, error } = await supabase
-      .from("bookings")
-      .select("*");
+    const { data } = await supabase.from("bookings").select("*");
 
-    if (!error && data) {
-      const parsed = data.map((b) => ({
-        ...b,
-        players: b.players.split(",")
-      }));
-      setBookings(parsed);
+    if (data) {
+      setBookings(
+        data.map(b => ({
+          ...b,
+          players: b.players.split(",")
+        }))
+      );
     }
   };
 
-  // ✅ LOAD USERS
   const loadUsers = async () => {
-    const { data } = await supabase
-      .from("users")
-      .select("*");
-
+    const { data } = await supabase.from("users").select("*");
     setUsersList(data || []);
   };
 
@@ -55,43 +51,31 @@ export default function App() {
     loadUsers();
   }, []);
 
-  // ✅ FILTER USERS
+  // FILTER
   useEffect(() => {
-    if (!search) {
-      setFilteredUsers([]);
-      return;
-    }
+    if (!search) return setFilteredUsers([]);
 
-    const result = usersList.filter((u) =>
-      (u.name + " " + u.surname + " " + u.username)
-        .toLowerCase()
-        .includes(search.toLowerCase())
+    setFilteredUsers(
+      usersList.filter(u =>
+        `${u.name} ${u.surname} ${u.username}`
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      )
     );
-
-    setFilteredUsers(result);
   }, [search, usersList]);
 
-  // ✅ LOGIN
+  // LOGIN
   const handleLogin = async () => {
     const { data } = await supabase.from("users").select("*");
 
     const found = data?.find(
-      (u) =>
-        u.username &&
-        u.username.toLowerCase() === user.trim().toLowerCase()
+      u =>
+        u.username?.toLowerCase() === user.trim().toLowerCase()
     );
 
-    if (!found) {
-      alert("Utente non valido");
-      return;
-    }
+    if (!found) return alert("Utente non valido");
 
     if (!found.pin) {
-      if (!pin) {
-        alert("Inserisci PIN");
-        return;
-      }
-
       await supabase
         .from("users")
         .update({ pin })
@@ -101,15 +85,12 @@ export default function App() {
       return;
     }
 
-    if (found.pin !== pin) {
-      alert("PIN errato");
-      return;
-    }
+    if (found.pin !== pin) return alert("PIN errato");
 
     setLoggedUser(found.username);
   };
 
-  // ✅ PRENOTAZIONE
+  // PRENOTA
   const bookSlot = async (court, hour) => {
     let players = [...selectedPlayers];
 
@@ -118,31 +99,8 @@ export default function App() {
     }
 
     if (players.length !== 2 && players.length !== 4) {
-      alert("Seleziona 2 o 4 giocatori");
-      return;
+      return alert("Seleziona 2 o 4 giocatori");
     }
-
-    const today = new Date().toISOString().split("T")[0];
-
-    for (let p of players) {
-      const active = bookings.filter(
-        (b) => b.players.includes(p) && b.date >= today
-      );
-
-      if (p.toLowerCase() !== "maestro" && active.length >= 2) {
-        alert(p + " ha già 2 ore attive");
-        return;
-      }
-    }
-
-    const exists = bookings.find(
-      (b) =>
-        b.court === court &&
-        b.hour === hour &&
-        b.date === selectedDate
-    );
-
-    if (exists) return;
 
     await supabase.from("bookings").insert([
       {
@@ -158,7 +116,7 @@ export default function App() {
     loadBookings();
   };
 
-  // ✅ CANCELLA
+  // CANCEL
   const cancelBooking = async (court, hour) => {
     await supabase
       .from("bookings")
@@ -170,144 +128,142 @@ export default function App() {
     loadBookings();
   };
 
-  // ✅ COLORI
-  const getColor = (booking) => {
+  const getColor = booking => {
     if (!booking) return "#4CAF50";
-    if (booking.players.some(p => p.toLowerCase().includes("esterno"))) return "#FFA500";
-    if (booking.players.some(p => p.toLowerCase() === "maestro")) return "#ff4d4d";
+    if (booking.players.some(p => p.includes("esterno")))
+      return "#FFA500";
+    if (booking.players.some(p => p === "maestro"))
+      return "#ff4d4d";
     return "#007BFF";
   };
 
-  // ✅ LOGIN VIEW
+  // LOGIN
   if (!loggedUser) {
     return (
-      <div style={{ padding: 20, maxWidth: 400, margin: "auto" }}>
-        <h2 style={{ textAlign: "center" }}>Accesso</h2>
-
+      <div style={{ padding: 20 }}>
+        <h2>Login</h2>
+        <input value={user} onChange={e => setUser(e.target.value)} />
         <input
-          placeholder="Username"
-          value={user}
-          onChange={(e) => setUser(e.target.value)}
-          style={{ width: "100%", padding: 10, marginBottom: 10 }}
-        />
-
-        <input
-          placeholder="PIN"
           type="password"
           value={pin}
-          onChange={(e) => setPin(e.target.value)}
-          style={{ width: "100%", padding: 10 }}
+          onChange={e => setPin(e.target.value)}
         />
-
-        <button
-          onClick={handleLogin}
-          style={{
-            marginTop: 10,
-            width: "100%",
-            padding: 12,
-            background: "#007BFF",
-            color: "white",
-            border: "none",
-            borderRadius: 8
-          }}
-        >
-          Entra
-        </button>
+        <button onClick={handleLogin}>Entra</button>
       </div>
     );
   }
 
-  // ✅ APP UI
+  // DASHBOARD
+  if (view === "dashboard") {
+    return (
+      <div style={{ padding: 10 }}>
+        <button onClick={() => setView("booking")}>← Torna</button>
+        <h2>Dashboard</h2>
+
+        {courts.map(court => (
+          <div key={court}>
+            <h3>{court}</h3>
+
+            {hours.map(hour => {
+              const b = bookings.find(
+                x =>
+                  x.court === court &&
+                  x.hour === hour &&
+                  x.date === selectedDate
+              );
+
+              return (
+                <div key={hour}>
+                  {hour}:00 - {b ? b.players.join(", ") : "Libero"}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // APP
   return (
-    <div style={{ maxWidth: 500, margin: "auto", padding: 15 }}>
-      <h2 style={{ textAlign: "center" }}>🎾 Prenotazioni</h2>
+    <div style={{ padding: 10, maxWidth: 450, margin: "auto" }}>
+      <h2>🎾 Prenotazioni</h2>
 
-      <p style={{ textAlign: "center" }}>
-        Utente: <strong>{loggedUser}</strong>
-      </p>
+      <button onClick={() => setView("dashboard")}>
+        Dashboard
+      </button>
 
-      {/* SEARCH */}
       <input
-        placeholder="Cerca giocatori..."
+        placeholder="Cerca giocatori"
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={{ width: "100%", padding: 12, borderRadius: 8 }}
+        onChange={e => setSearch(e.target.value)}
+        style={{ width: "100%", padding: 10 }}
       />
 
-      {filteredUsers.map((u) => (
+      {filteredUsers.map(u => (
         <div
           key={u.id}
-          style={{ padding: 10, borderBottom: "1px solid #eee", cursor: "pointer" }}
           onClick={() => {
-            if (!selectedPlayers.includes(u.username)) {
-              setSelectedPlayers([...selectedPlayers, u.username]);
-            }
+            setSelectedPlayers([...selectedPlayers, u.username]);
             setSearch("");
           }}
+          style={{ padding: 10, borderBottom: "1px solid #ccc" }}
         >
-          {u.name} {u.surname} ({u.username})
+          {u.name} {u.surname}
         </div>
       ))}
 
-      {/* ESTERNO */}
-      <button
-        onClick={() =>
-          setSelectedPlayers([...selectedPlayers, "esterno"])
-        }
-        style={{
-          width: "100%",
-          padding: 10,
-          marginTop: 10,
-          background: "#FFA500",
-          color: "white",
-          border: "none",
-          borderRadius: 8
-        }}
-      >
+      {/* BADGE giocatori */}
+      <div>
+        {selectedPlayers.map(p => {
+          const u = usersList.find(x => x.username === p);
+
+          return (
+            <span
+              key={p}
+              onClick={() =>
+                setSelectedPlayers(selectedPlayers.filter(x => x !== p))
+              }
+              style={{
+                display: "inline-block",
+                background: "#007BFF",
+                color: "white",
+                padding: "6px 12px",
+                borderRadius: 20,
+                margin: 4,
+                cursor: "pointer"
+              }}
+            >
+              {u ? `${u.name} ${u.surname}` : p} ✕
+            </span>
+          );
+        })}
+      </div>
+
+      <button onClick={() => setSelectedPlayers([...selectedPlayers, "esterno"])}>
         + Esterno
       </button>
 
-      {/* BADGE */}
-      <div style={{ marginTop: 10 }}>
-        {selectedPlayers.map((p, i) => (
-          <span
-            key={i}
-            style={{
-              background: "#007BFF",
-              color: "white",
-              padding: "5px 10px",
-              borderRadius: 20,
-              margin: 3,
-              display: "inline-block",
-              fontSize: 12
-            }}
-          >
-            {p}
-          </span>
-        ))}
-      </div>
-
-      {/* DATA */}
       <input
         type="date"
         value={selectedDate}
-        onChange={(e) => setSelectedDate(e.target.value)}
-        style={{ width: "100%", marginTop: 10, padding: 10 }}
+        onChange={e => setSelectedDate(e.target.value)}
       />
 
-      {/* CAMPI */}
-      {courts.map((court) => (
-        <div key={court} style={{ marginTop: 20 }}>
+      {courts.map(court => (
+        <div key={court}>
           <h3>{court}</h3>
 
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3,1fr)",
-            gap: 8
-          }}>
-            {hours.map((hour) => {
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2,1fr)", // ✅ grande
+              gap: 10
+            }}
+          >
+            {hours.map(hour => {
               const booking = bookings.find(
-                (b) =>
+                b =>
                   b.court === court &&
                   b.hour === hour &&
                   b.date === selectedDate
@@ -316,31 +272,24 @@ export default function App() {
               return (
                 <button
                   key={hour}
-                  onClick={() => {
-                    if (booking) {
-                      if (
-                        booking.players.includes(loggedUser) ||
-                        loggedUser.toLowerCase() === "maestro"
-                      ) {
-                        cancelBooking(court, hour);
-                      }
-                    } else {
-                      bookSlot(court, hour);
-                    }
-                  }}
+                  onClick={() =>
+                    booking
+                      ? cancelBooking(court, hour)
+                      : bookSlot(court, hour)
+                  }
                   style={{
-                    height: 70,
-                    borderRadius: 10,
-                    border: "none",
+                    height: 100, // ✅ più grande
+                    fontSize: 16,
+                    borderRadius: 12,
                     backgroundColor: getColor(booking),
                     color: "white"
                   }}
                 >
                   <div>{hour}:00</div>
                   {booking && (
-                    <div style={{ fontSize: 10 }}>
-                      {booking.players.join(", ")
-                    }</div>
+                    <div style={{ fontSize: 12 }}>
+                      {booking.players.join(", ")}
+                    </div>
                   )}
                 </button>
               );
