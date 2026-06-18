@@ -23,25 +23,35 @@ export default function App() {
 
   const [view, setView] = useState("booking");
 
+  const [weekOffset, setWeekOffset] = useState(0);
+
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
 
   // ✅ WEEK helper
-  const getWeekDates = () => {
-    const today = new Date();
-    const day = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - ((day + 6) % 7));
+const getWeekDates = () => {
+  const today = new Date();
+  const day = today.getDay();
 
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      return d.toISOString().split("T")[0];
-    });
-  };
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((day + 6) % 7) + weekOffset * 7);
 
-  const weekDates = getWeekDates();
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return {
+      date: d.toISOString().split("T")[0],
+      label: d.toLocaleDateString("it-IT", {
+        weekday: "short",
+        day: "numeric"
+      })
+    };
+  });
+};
+``
+
+  const weekDates = getWeekDates()
 
   // LOAD
   const loadBookings = async () => {
@@ -219,71 +229,89 @@ export default function App() {
   }
 
   // ✅ DASHBOARD SETTIMANALE
-  if (view === "dashboard") {
-    return (
-      <div style={{ padding: 10 }}>
-        <button onClick={() => setView("booking")}>
-          ← Torna
+if (view === "dashboard") {
+  return (
+    <div style={{ padding: 10 }}>
+      <button onClick={() => setView("booking")}>
+        ← Torna
+      </button>
+
+      <h2 style={{ textAlign: "center" }}>📅 Tabellone</h2>
+
+      {/* ✅ NAVIGAZIONE SETTIMANA */}
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        marginBottom: 10
+      }}>
+        <button onClick={() => setWeekOffset(weekOffset - 1)}>
+          ← Settimana prec.
         </button>
 
-        <h2 style={{ textAlign: "center" }}>📅 Tabellone</h2>
-
-        {courts.map(court => (
-          <div key={court} style={{ marginBottom: 20 }}>
-            <h3 style={{ textAlign: "center" }}>{court}</h3>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "60px repeat(7,1fr)",
-                gap: 4
-              }}
-            >
-              <div></div>
-
-              {weekDates.map(date => (
-                <div key={date} style={{ fontSize: 10 }}>
-                  {date.slice(5)}
-                </div>
-              ))}
-
-              {hours.map(hour => (
-                <>
-                  <div key={hour}>{hour}:00</div>
-
-                  {weekDates.map(date => {
-                    const b = bookings.find(
-                      x =>
-                        x.court === court &&
-                        x.hour === hour &&
-                        x.date === date
-                    );
-
-                    return (
-                      <div
-                        key={date + hour}
-                        style={{
-                          height: 30,
-                          background: getColor(b),
-                          fontSize: 9,
-                          color: "white",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center"
-                        }}
-                      >
-                        {b ? "✔" : ""}
-                      </div>
-                    );
-                  })}
-                </>
-              ))}
-            </div>
-          </div>
-        ))}
+        <button onClick={() => setWeekOffset(weekOffset + 1)}>
+          Settimana succ. →
+        </button>
       </div>
-    );
-  }
+
+      {courts.map(court => (
+        <div key={court} style={{ marginBottom: 20 }}>
+          <h3 style={{ textAlign: "center" }}>{court}</h3>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "60px repeat(7,1fr)",
+              gap: 4
+            }}
+          >
+            <div></div>
+
+            {/* ✅ intestazione giorni */}
+            {weekDates.map(d => (
+              <div key={d.date} style={{ fontSize: 10 }}>
+                {d.label}
+              </div>
+            ))}
+
+            {/* ✅ righe ore */}
+            {hours.map(hour => (
+              <React.Fragment key={hour}>
+                <div>{hour}:00</div>
+
+                {weekDates.map(d => {
+                  const booking = bookings.find(
+                    b =>
+                      b.court === court &&
+                      b.hour === hour &&
+                      b.date === d.date
+                  );
+
+                  return (
+                    <div
+                      key={d.date + hour}
+                      style={{
+                        height: 35,
+                        background: getColor(booking),
+                        fontSize: 9,
+                        color: "white",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center"
+                      }}
+                    >
+                      {booking ? "✔" : ""}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 
   // APP
   return (
