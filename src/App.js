@@ -89,30 +89,61 @@ export default function App() {
   };
 
   // PRENOTA
-  const bookSlot = async (court, hour) => {
-    let players = [...selectedPlayers];
+ const bookSlot = async (court, hour) => {
+  let players = [...selectedPlayers];
 
-    if (!players.includes(loggedUser)) {
-      players.unshift(loggedUser);
+  if (!players.includes(loggedUser)) {
+    players.unshift(loggedUser);
+  }
+
+  // ✅ minimo 2 o 4
+  if (players.length !== 2 && players.length !== 4) {
+    return alert("Seleziona 2 o 4 giocatori");
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+
+  // ✅ BLOCCO 2 ORE ATTIVE
+  for (let p of players) {
+    const activeBookings = bookings.filter(
+      (b) =>
+        b.players.includes(p) &&
+        b.date >= today
+    );
+
+    if (
+      p.toLowerCase() !== "maestro" &&
+      activeBookings.length >= 2
+    ) {
+      alert(`${p} ha già 2 ore prenotate`);
+      return;
     }
+  }
 
-    if (players.length !== 2 && players.length !== 4) {
-      return alert("Seleziona 2 o 4 giocatori");
+  // ✅ controllo slot già occupato
+  const exists = bookings.find(
+    (b) =>
+      b.court === court &&
+      b.hour === hour &&
+      b.date === selectedDate
+  );
+
+  if (exists) return;
+
+  // ✅ salva
+  await supabase.from("bookings").insert([
+    {
+      court,
+      hour,
+      date: selectedDate,
+      players: players.join(","),
+      created_by: loggedUser
     }
+  ]);
 
-    await supabase.from("bookings").insert([
-      {
-        court,
-        hour,
-        date: selectedDate,
-        players: players.join(","),
-        created_by: loggedUser
-      }
-    ]);
-
-    setSelectedPlayers([]);
-    loadBookings();
-  };
+  setSelectedPlayers([]);
+  loadBookings();
+};
 
   // CANCELLA
   const cancelBooking = async (court, hour) => {
