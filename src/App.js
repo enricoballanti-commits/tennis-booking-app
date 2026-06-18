@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  "https://dfxcscxkwabshseoxjte.supabase.co/rest/v1/",
+  "https://dfxcscxkwabshseoxjte.supabase.co",
   "sb_publishable_V89vpZmV3Ao4H_uEcrYMcQ_Q-zyG8zA"
 );
 
