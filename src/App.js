@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// 🔴 INSERISCI QUI I TUOI DATI
+// 🔴 INSERISCI I TUOI DATI SUPABASE
 const supabase = createClient(
   "https://dfxcscxkwabshseoxjte.supabase.co/rest/v1/",
   "sb_publishable_V89vpZmV3Ao4H_uEcrYMcQ_Q-zyG8zA"
@@ -21,21 +21,29 @@ export default function App() {
     new Date().toISOString().split("T")[0]
   );
 
-  // ✅ LOGIN
+  // ✅ LOGIN CASE-INSENSITIVE
   const handleLogin = async () => {
     const { data, error } = await supabase
       .from("users")
-      .select("*")
-      .ilike("username", user);
+      .select("*");
 
-    if (error || data.length === 0) {
+    if (error || !data) {
+      alert("Errore database");
+      return;
+    }
+
+    const found = data.find(
+      (u) =>
+        u.username &&
+        u.username.toLowerCase() === user.trim().toLowerCase()
+    );
+
+    if (!found) {
       alert("Utente non valido");
       return;
     }
 
-    const found = data[0];
-
-    // primo accesso
+    // ✅ Primo accesso → crea PIN
     if (!found.pin) {
       if (!pin) {
         alert("Inserisci PIN");
@@ -51,6 +59,7 @@ export default function App() {
       return;
     }
 
+    // ✅ Login normale
     if (found.pin !== pin) {
       alert("PIN errato");
       return;
@@ -77,6 +86,7 @@ export default function App() {
 
     const today = new Date().toISOString().split("T")[0];
 
+    // ✅ Controllo 2 ore attive
     for (let p of players) {
       const active = bookings.filter(
         (b) =>
@@ -103,6 +113,22 @@ export default function App() {
       ...bookings,
       { court, hour, players, date: selectedDate }
     ]);
+
+    setPlayersInput("");
+  };
+
+  // ✅ CANCELLAZIONE
+  const cancelBooking = (court, hour) => {
+    setBookings(
+      bookings.filter(
+        (b) =>
+          !(
+            b.court === court &&
+            b.hour === hour &&
+            b.date === selectedDate
+          )
+      )
+    );
   };
 
   // ✅ COLORI
@@ -110,14 +136,14 @@ export default function App() {
     if (!booking) return "#4CAF50";
 
     if (booking.players.some(p => p.toLowerCase() === "maestro")) {
-      return "#ff4d4d";
+      return "#ff4d4d"; // rosso maestro
     }
 
     if (booking.players.some(p => p.toLowerCase().includes("esterno"))) {
-      return "#FFA500";
+      return "#FFA500"; // arancione esterno
     }
 
-    return "#007BFF";
+    return "#007BFF"; // blu
   };
 
   // ✅ LOGIN VIEW
@@ -129,7 +155,7 @@ export default function App() {
         <input
           placeholder="Username (es: MARROS)"
           value={user}
-          onChange={(e) => setUser(e.target.value.toUpperCase())}
+          onChange={(e) => setUser(e.target.value)}
         />
 
         <br />
@@ -157,7 +183,7 @@ export default function App() {
         <input
           placeholder="Giocatori (es: LUCBIA, ANNVER)"
           value={playersInput}
-          onChange={(e) => setPlayersInput(e.target.value.toUpperCase())}
+          onChange={(e) => setPlayersInput(e.target.value)}
         />
       </div>
 
@@ -173,7 +199,13 @@ export default function App() {
         <div key={court}>
           <h3>{court}</h3>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4,1fr)",
+              gap: 10
+            }}
+          >
             {hours.map((hour) => {
               const booking = bookings.find(
                 (b) =>
@@ -185,11 +217,25 @@ export default function App() {
               return (
                 <button
                   key={hour}
-                  onClick={() => bookSlot(court, hour)}
+                  onClick={() => {
+                    if (booking) {
+                      if (
+                        booking.players.includes(loggedUser) ||
+                        loggedUser.toLowerCase() === "maestro"
+                      ) {
+                        cancelBooking(court, hour);
+                      } else {
+                        alert("Non puoi cancellare");
+                      }
+                    } else {
+                      bookSlot(court, hour);
+                    }
+                  }}
                   style={{
                     height: 60,
                     backgroundColor: getColor(booking),
-                    color: "white"
+                    color: "white",
+                    borderRadius: 8
                   }}
                 >
                   {hour}
