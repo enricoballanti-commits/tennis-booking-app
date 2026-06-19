@@ -113,11 +113,59 @@ export default function App() {
   };
 
   // ✅ BOOK SLOT
-  const bookSlot = async (court, hour) => {
-    let players = [...selectedPlayers];
-    const isMaestro = loggedUser.toLowerCase() === "maestro";
-// ✅ BLOCCO MAESTRO (DEVE STARE QUI)
-if (isMaestro) {
+const bookSlot = async (court, hour) => {
+  const isMaestro = loggedUser.toLowerCase() === "maestro";
+
+  // ✅ MAESTRO → completamente separato
+  if (isMaestro) {
+    const exists = bookings.find(
+      b =>
+        b.court === court &&
+        b.hour === hour &&
+        b.date === selectedDate
+    );
+
+    if (exists) return;
+
+    await supabase.from("bookings").insert([
+      {
+        court,
+        hour,
+        date: selectedDate,
+        players: "maestro",
+        created_by: loggedUser
+      }
+    ]);
+
+    loadBookings();
+    return;
+  }
+
+  // ✅ UTENTI NORMALI (tutto come prima)
+  let players = [...selectedPlayers];
+
+  if (!players.includes(loggedUser)) {
+    players = [loggedUser, ...players];
+  }
+
+  if (players.length !== 2 && players.length !== 4) {
+    alert("Seleziona 2 o 4 giocatori");
+    return;
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+
+  for (let p of players) {
+    const active = bookings.filter(
+      b => b.players.includes(p) && b.date >= today
+    );
+
+    if (active.length >= 2) {
+      alert(`${p} ha già 2 ore prenotate`);
+      return;
+    }
+  }
+
   const exists = bookings.find(
     b =>
       b.court === court &&
@@ -132,65 +180,14 @@ if (isMaestro) {
       court,
       hour,
       date: selectedDate,
-      players: "maestro",
+      players: players.join(","),
       created_by: loggedUser
     }
   ]);
 
+  setSelectedPlayers([]);
   loadBookings();
-  return; // ⬅️ IMPORTANTISSIMO
-}
-    if (!isMaestro) {
-      if (!players.includes(loggedUser)) {
-        players = [loggedUser, ...players];
-      }
-
-      if (players.length !== 2 && players.length !== 4) {
-        alert("Seleziona 2 o 4 giocatori");
-        return;
-      }
-
-      const today = new Date().toISOString().split("T")[0];
-
-      for (let p of players) {
-        const active = bookings.filter(
-          b => b.players.includes(p) && b.date >= today
-        );
-
-        if (active.length >= 2) {
-          alert(`${p} ha già 2 ore prenotate`);
-          return;
-        }
-      }
-    }
-
-    const exists = bookings.find(
-      b =>
-        b.court === court &&
-        b.hour === hour &&
-        b.date === selectedDate
-    );
-
-    if (exists) return;
-
-    // ✅ MAESTRO
-    if (isMaestro) {
-      players = ["maestro"];
-    }
-
-    await supabase.from("bookings").insert([
-      {
-        court,
-        hour,
-        date: selectedDate,
-        players: players.join(","),
-        created_by: loggedUser
-      }
-    ]);
-
-    setSelectedPlayers([]);
-    loadBookings();
-  };
+};
 
   // ✅ CANCEL
   const cancelBooking = async (court, hour) => {
