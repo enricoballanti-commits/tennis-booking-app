@@ -182,14 +182,21 @@ export default function App() {
   };
 
   // ✅ COLORI
-  const getColor = booking => {
-    if (!booking) return "#4CAF50";
+ const getColor = booking => {
+  if (!booking) return "#4CAF50";
 
-    if (booking.players.includes("maestro")) return "#FFA500";
-    if (booking.players.some(p => p.includes("esterno"))) return "#FFA500";
+  // ✅ MAESTRO → arancione
+  if (booking.players.includes("maestro")) {
+    return "#FFA500";
+  }
 
-    return "#007BFF";
-  };
+  // ✅ ESTERNO → giallo diverso
+  if (booking.players.includes("esterno")) {
+    return "#FFD700";
+  }
+
+  return "#007BFF";
+};
 
   // LOGIN
   if (!loggedUser) {
@@ -460,7 +467,14 @@ export default function App() {
                             const u = usersList.find(x => x.username === p);
                             return (
                               <div key={i}>
-                                {u ? `${u.name} ${u.surname}` : p}
+                                {p === "maestro"
+                                  ? "Maestro"
+                                  : p === "esterno"
+                                  ? "Esterno"
+                                  : u
+                                  ? `${u.name} ${u.surname}`
+                                : p}
+                                  ``
                               </div>
                             );
                           })}
