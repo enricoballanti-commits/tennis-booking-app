@@ -116,7 +116,30 @@ export default function App() {
   const bookSlot = async (court, hour) => {
     let players = [...selectedPlayers];
     const isMaestro = loggedUser.toLowerCase() === "maestro";
+// ✅ BLOCCO MAESTRO (DEVE STARE QUI)
+if (isMaestro) {
+  const exists = bookings.find(
+    b =>
+      b.court === court &&
+      b.hour === hour &&
+      b.date === selectedDate
+  );
 
+  if (exists) return;
+
+  await supabase.from("bookings").insert([
+    {
+      court,
+      hour,
+      date: selectedDate,
+      players: "maestro",
+      created_by: loggedUser
+    }
+  ]);
+
+  loadBookings();
+  return; // ⬅️ IMPORTANTISSIMO
+}
     if (!isMaestro) {
       if (!players.includes(loggedUser)) {
         players = [loggedUser, ...players];
