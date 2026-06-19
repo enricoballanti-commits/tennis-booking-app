@@ -114,7 +114,14 @@ export default function App() {
 
   // ✅ BOOK SLOT
 const bookSlot = async (court, hour) => {
-  const isMaestro = loggedUser.toLowerCase() === "maestro";
+  
+console.log("USER:", loggedUser);
+
+  const isMaestro =
+    loggedUser &&
+    loggedUser.toLowerCase().trim() === "maestro";
+
+  console.log("IS MAESTRO:", isMaestro);
 
   // ✅ MAESTRO → completamente separato
   if (isMaestro) {
