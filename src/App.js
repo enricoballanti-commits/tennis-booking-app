@@ -345,18 +345,68 @@ export default function App() {
             </div>
           ))}
 
-          <div>
-            {selectedPlayers.map(p => {
-              const u = usersList.find(x => x.username === p);
-              return (
-                <span key={p}>
-                  {u ? `${u.name} ${u.surname}` : p}
-                </span>
-              );
-            })}
-          </div>
+         <div style={{ marginTop: 10 }}>
+  {selectedPlayers.map(p => {
+    const u = usersList.find(x => x.username === p);
+
+    return (
+      <span
+        key={p}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          background: "#007BFF",
+          color: "white",
+          padding: "6px 12px",
+          borderRadius: 20,
+          margin: 4,
+          fontSize: 12
+        }}
+      >
+        {p === "esterno"
+          ? "Esterno"
+          : u
+            ? `${u.name} ${u.surname}`
+            : p}
+
+        <span
+          onClick={() =>
+            setSelectedPlayers(
+              selectedPlayers.filter(x => x !== p)
+            )
+          }
+          style={{
+            marginLeft: 8,
+            cursor: "pointer",
+            fontWeight: "bold"
+          }}
+        >
+          ✕
+        </span>
+      </span>
+    );
+  })}
+</div>
         </>
       )}
+<button
+  onClick={() => {
+    if (!selectedPlayers.includes("esterno")) {
+      setSelectedPlayers([...selectedPlayers, "esterno"]);
+    }
+  }}
+  style={{
+    marginTop: 10,
+    padding: 10,
+    width: "100%",
+    background: "#FFA500",
+    color: "white",
+    borderRadius: 8,
+    border: "none"
+  }}
+>
+  + Esterno
+</button>
 
       {/* SLOT */}
       {courts.map(court => (
