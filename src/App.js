@@ -463,6 +463,7 @@ console.log("USER:", loggedUser);
                 <button
                   key={hour}
                   onClick={() => {
+                    console.log("CLICK!");
                     if (!booking) {
                       bookSlot(court, hour);
                       return;
